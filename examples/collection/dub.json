@@ -1,0 +1,13 @@
+{
+	"name": "container-demo",
+	"description": "A demo for hunt.collection.",
+	"copyright": "Copyright © 2017-2020, HuntLabs.net",
+	"homepage": "https://www.huntlabs.net",
+	"license": "Apache-2.0",
+	"versions": ["HUNT_DEBUG"],
+	"dependencies": {
+		"hunt-extra" : {
+			"path" : "../../"
+		}
+	}
+}
