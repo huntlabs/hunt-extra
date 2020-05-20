@@ -11,8 +11,9 @@
 
 module hunt.util.UnitTest;
 
-import hunt.util.ObjectUtils;
 import core.time;
+
+private enum string[] FixedObjectMembers = ["toString", "opCmp", "opEquals", "Monitor", "factory"];
 
 void testUnits(T)() {
 	enum v = generateUnitTests!T;
