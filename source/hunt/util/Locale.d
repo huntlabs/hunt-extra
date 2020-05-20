@@ -20,25 +20,6 @@ import hunt.system.Environment;
 import hunt.text.StringBuilder;
 import hunt.util.Common;
 import hunt.util.Configuration;
-// import java.text.MessageFormat;
-// import java.util.concurrent.ConcurrentHashMap;
-// import java.util.spi.LocaleNameProvider;
-// import java.util.stream.Collectors;
-
-// import sun.security.action.GetPropertyAction;
-// import sun.util.locale.BaseLocale;
-// import sun.util.locale.InternalLocaleBuilder;
-// import sun.util.locale.LanguageTag;
-// import sun.util.locale.LocaleExtensions;
-// import sun.util.locale.LocaleMatcher;
-// import sun.util.locale.LocaleObjectCache;
-// import sun.util.locale.LocaleSyntaxException;
-// import sun.util.locale.LocaleUtils;
-// import sun.util.locale.ParseStatus;
-// import sun.util.locale.provider.LocaleProviderAdapter;
-// import sun.util.locale.provider.LocaleResources;
-// import sun.util.locale.provider.LocaleServiceProviderPool;
-// import sun.util.locale.provider.TimeZoneNameUtility;
 
 import std.array;
 import std.concurrency : initOnce;
