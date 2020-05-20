@@ -14,6 +14,7 @@ module hunt.concurrency.CompletionStage;
 import hunt.Object;
 import hunt.Functions;
 import hunt.util.Common;
+import hunt.util.Runnable;
 
 
 /**

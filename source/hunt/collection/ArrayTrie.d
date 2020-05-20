@@ -19,7 +19,8 @@ import hunt.collection.Set;
 import hunt.collection.Trie;
 
 import hunt.Exceptions;
-import hunt.text.StringBuilder;
+import hunt.util.Appendable;
+import hunt.util.StringBuilder;
 
 import hunt.logging;
 import std.conv;

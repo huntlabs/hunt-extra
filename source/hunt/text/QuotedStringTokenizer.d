@@ -18,8 +18,9 @@ import std.string;
 // import hunt.collection.StringBuilder;
 import hunt.text.StringTokenizer;
 import hunt.text.Common;
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 import hunt.Exceptions;
+import hunt.util.Appendable;
 import hunt.util.Common;
 import hunt.util.ConverterUtils;
 

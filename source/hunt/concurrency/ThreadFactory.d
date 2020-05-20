@@ -16,6 +16,7 @@ import hunt.concurrency.thread.ThreadEx;
 
 import hunt.Functions;
 import hunt.util.Common;
+import hunt.util.Runnable;
 
 import core.thread;
 import std.conv;

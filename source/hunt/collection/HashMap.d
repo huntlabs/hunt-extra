@@ -17,7 +17,7 @@ import hunt.collection.Iterator;
 
 import hunt.Exceptions;
 import hunt.Object;
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 import hunt.util.ObjectUtils;
 import hunt.util.Traits;
 

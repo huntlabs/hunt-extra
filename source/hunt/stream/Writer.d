@@ -13,6 +13,7 @@ module hunt.stream.Writer;
 
 import hunt.Exceptions;
 import hunt.util.Common;
+import hunt.util.Appendable;
 
 import std.algorithm;
 import std.array;

@@ -15,7 +15,7 @@ import hunt.Exceptions;
 import hunt.Functions;
 import hunt.logging.ConsoleLogger;
 
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 import hunt.util.Common;
 import hunt.util.DateTime;
 import hunt.util.UnitTest;

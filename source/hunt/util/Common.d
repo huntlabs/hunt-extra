@@ -10,6 +10,9 @@
  */
 module hunt.util.Common;
 
+import hunt.util.Runnable;
+
+
 /**
  * Implementing this interface allows an object to be the target of
  * the "for-each loop" statement. 
@@ -83,44 +86,6 @@ interface Comparable(T) {
 
     deprecated("Use opCmp instead.")
     alias compareTo = opCmp;
-}
-
-/**
- * The <code>Runnable</code> interface should be implemented by any
- * class whose instances are intended to be executed by a thread. The
- * class must define a method of no arguments called <code>run</code>.
- * <p>
- * This interface is designed to provide a common protocol for objects that
- * wish to execute code while they are active. For example,
- * <code>Runnable</code> is implemented by class <code>Thread</code>.
- * Being active simply means that a thread has been started and has not
- * yet been stopped.
- * <p>
- * In addition, <code>Runnable</code> provides the means for a class to be
- * active while not subclassing <code>Thread</code>. A class that implements
- * <code>Runnable</code> can run without subclassing <code>Thread</code>
- * by instantiating a <code>Thread</code> instance and passing itself in
- * as the target.  In most cases, the <code>Runnable</code> interface should
- * be used if you are only planning to override the <code>run()</code>
- * method and no other <code>Thread</code> methods.
- * This is important because classes should not be subclassed
- * unless the programmer intends on modifying or enhancing the fundamental
- * behavior of the class.
- *
- * @author  Arthur van Hoff
- * @see     Callable
- */
-interface Runnable {
-    /**
-     * When an object implementing interface <code>Runnable</code> is used
-     * to create a thread, starting the thread causes the object's
-     * <code>run</code> method to be called in that separately executing
-     * thread.
-     * <p>
-     * The general contract of the method <code>run</code> is that it may
-     * take any action whatsoever.
-     */
-    void run();
 }
 
 
@@ -331,100 +296,6 @@ interface Closeable : AutoCloseable {
     
 }
 
-
-/**
- * An object to which {@code char} sequences and values can be appended.  The
- * {@code Appendable} interface must be implemented by any class whose
- * instances are intended to receive formatted output from a {@link
- * java.util.Formatter}.
- *
- * <p> The characters to be appended should be valid Unicode characters as
- * described in <a href="Character.html#unicode">Unicode Character
- * Representation</a>.  Note that supplementary characters may be composed of
- * multiple 16-bit {@code char} values.
- *
- * <p> Appendables are not necessarily safe for multithreaded access.  Thread
- * safety is the responsibility of classes that extend and implement this
- * interface.
- *
- * <p> Since this interface may be implemented by existing classes
- * with different styles of error handling there is no guarantee that
- * errors will be propagated to the invoker.
- *
- */
-interface Appendable {
-
-    /**
-     * Appends the specified character sequence to this {@code Appendable}.
-     *
-     * <p> Depending on which class implements the character sequence
-     * {@code csq}, the entire sequence may not be appended.  For
-     * instance, if {@code csq} is a {@link java.nio.CharBuffer} then
-     * the subsequence to append is defined by the buffer's position and limit.
-     *
-     * @param  csq
-     *         The character sequence to append.  If {@code csq} is
-     *         {@code null}, then the four characters {@code "null"} are
-     *         appended to this Appendable.
-     *
-     * @return  A reference to this {@code Appendable}
-     *
-     * @throws  IOException
-     *          If an I/O error occurs
-     */
-    Appendable append(const(char)[] csq);
-
-    /**
-     * Appends a subsequence of the specified character sequence to this
-     * {@code Appendable}.
-     *
-     * <p> An invocation of this method of the form {@code out.append(csq, start, end)}
-     * when {@code csq} is not {@code null}, behaves in
-     * exactly the same way as the invocation
-     *
-     * <pre>
-     *     out.append(csq.subSequence(start, end)) </pre>
-     *
-     * @param  csq
-     *         The character sequence from which a subsequence will be
-     *         appended.  If {@code csq} is {@code null}, then characters
-     *         will be appended as if {@code csq} contained the four
-     *         characters {@code "null"}.
-     *
-     * @param  start
-     *         The index of the first character in the subsequence
-     *
-     * @param  end
-     *         The index of the character following the last character in the
-     *         subsequence
-     *
-     * @return  A reference to this {@code Appendable}
-     *
-     * @throws  IndexOutOfBoundsException
-     *          If {@code start} or {@code end} are negative, {@code start}
-     *          is greater than {@code end}, or {@code end} is greater than
-     *          {@code csq.length()}
-     *
-     * @throws  IOException
-     *          If an I/O error occurs
-     */
-    Appendable append(const(char)[], int start, int end);
-
-    /**
-     * Appends the specified character to this {@code Appendable}.
-     *
-     * @param  c
-     *         The character to append
-     *
-     * @return  A reference to this {@code Appendable}
-     *
-     * @throws  IOException
-     *          If an I/O error occurs
-     */
-    Appendable append(char c);
-}
-
-
 /**
  * A tagging interface that all event listener interfaces must extend.
  */
@@ -548,18 +419,3 @@ class NoopCallback : Callback {
         return true;
     }
 }
-
-
-/**
-*/
-class CompilerHelper {
-
-    static bool isGreaterThan(int ver) pure @safe @nogc nothrow {
-        return __VERSION__ >= ver;
-    }
-
-    static bool isLessThan(int ver) pure @safe @nogc nothrow {
-        return __VERSION__ <= ver;
-    }
-}
-

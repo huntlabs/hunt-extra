@@ -14,6 +14,7 @@ module hunt.concurrency.Delayed;
 import hunt.concurrency.Future;
 
 import hunt.util.Common;
+import hunt.util.Runnable;
 import core.time;
 
 /**

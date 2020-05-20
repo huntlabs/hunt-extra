@@ -14,6 +14,7 @@ module hunt.concurrency.ExecutorService;
 import hunt.collection.Collection;
 import hunt.collection.List;
 import hunt.Functions;
+import hunt.util.Runnable;
 import hunt.util.Common;
 
 import std.datetime;

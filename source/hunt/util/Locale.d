@@ -17,7 +17,7 @@ import hunt.stream.Common;
 import hunt.logging.ConsoleLogger;
 import hunt.collection;
 import hunt.system.Environment;
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 import hunt.util.Common;
 import hunt.util.Configuration;
 

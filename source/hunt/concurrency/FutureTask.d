@@ -17,6 +17,7 @@ import hunt.concurrency.Future;
 import hunt.concurrency.thread;
 import hunt.Exceptions;
 import hunt.util.Common;
+import hunt.util.Runnable;
 
 import core.thread;
 import core.time;

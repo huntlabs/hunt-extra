@@ -11,7 +11,7 @@
 
 module hunt.text.QuoteUtil;
 
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 import hunt.Exceptions;
 
 import std.ascii;

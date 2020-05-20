@@ -13,6 +13,7 @@ module hunt.concurrency.atomic.AtomicHelper;
 
 import core.atomic;
 import hunt.util.Common;
+import hunt.util.CompilerHelper;
 
 class AtomicHelper {
     static void store(T)(ref T stuff, T newVal) {

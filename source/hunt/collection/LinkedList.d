@@ -25,6 +25,7 @@ import std.conv;
 import std.container;
 import std.range;
 
+import hunt.util.CompilerHelper;
 
 
 /**

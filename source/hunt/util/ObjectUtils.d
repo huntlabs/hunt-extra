@@ -14,6 +14,7 @@ module hunt.util.ObjectUtils;
 import hunt.Exceptions;
 import hunt.logging.ConsoleLogger;
 import hunt.util.Common;
+import hunt.util.CompilerHelper;
 
 import std.algorithm : canFind;
 import std.array;

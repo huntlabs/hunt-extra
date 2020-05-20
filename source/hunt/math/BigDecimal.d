@@ -12,7 +12,7 @@
 module hunt.math.BigDecimal;
 
 import std.conv;
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 import hunt.math.BigInteger;
 import hunt.Exceptions;
 import hunt.Integer;

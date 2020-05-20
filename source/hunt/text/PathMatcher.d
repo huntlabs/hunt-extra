@@ -17,7 +17,7 @@ import hunt.Exceptions;
 import hunt.Nullable;
 import hunt.text.Common;
 import hunt.text.StringUtils;
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 
 import std.array;
 import std.string;

@@ -13,6 +13,7 @@ module hunt.concurrency.Scheduler;
 
 import hunt.util.Common;
 import hunt.util.Lifecycle;
+import hunt.util.Runnable;
 
 import core.time;
 

@@ -19,6 +19,7 @@ import hunt.logging.ConsoleLogger;
 import hunt.system.Memory;
 import hunt.util.Common;
 import hunt.util.DateTime;
+import hunt.util.Runnable;
 
 import core.atomic;
 import core.thread;

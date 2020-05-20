@@ -16,7 +16,7 @@ import hunt.Functions;
 import hunt.logging.ConsoleLogger;
 import hunt.Float;
 import hunt.String;
-import hunt.text.StringBuilder;
+import hunt.util.StringBuilder;
 import hunt.util.Common;
 import hunt.util.DateTime;
 import hunt.util.UnitTest;
