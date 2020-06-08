@@ -102,7 +102,8 @@ interface Number {
 
 
 /**
-*/
+ * 
+ */
 abstract class AbstractNumber(T) : Nullable!T, Number {
 
     this(T value) {

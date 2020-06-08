@@ -5,6 +5,7 @@ import hunt.serialization.Common;
 import hunt.serialization.JsonSerializer;
 import hunt.logging.ConsoleLogger;
 import hunt.util.Common;
+import hunt.util.CompilerHelper;
 import hunt.util.ObjectUtils;
 
 import std.conv;

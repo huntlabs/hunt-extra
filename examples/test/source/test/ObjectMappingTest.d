@@ -2,6 +2,7 @@ module test.ObjectMappingTest;
 
 import common;
 import hunt.util.Common;
+import hunt.util.CompilerHelper;
 
 static if(CompilerHelper.isGreaterThan (2086)) {
 
