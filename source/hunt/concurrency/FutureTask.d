@@ -15,11 +15,18 @@ import hunt.concurrency.atomic.AtomicHelper;
 import hunt.concurrency.Executors;
 import hunt.concurrency.Future;
 import hunt.concurrency.thread;
+
 import hunt.Exceptions;
 import hunt.util.Common;
+import hunt.util.CompilerHelper;
 import hunt.util.Runnable;
 
-import core.thread;
+static if(CompilerHelper.isGreaterThan(2093)) {
+    import core.thread.osthread;
+} else {
+    import core.thread;
+}
+
 import core.time;
 
 import hunt.concurrency.thread;
