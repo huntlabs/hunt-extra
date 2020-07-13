@@ -6,7 +6,15 @@ import hunt.logging.ConsoleLogger;
 import hunt.util.Common;
 import hunt.util.UnitTest;
 
-import core.thread;
+import hunt.util.CompilerHelper;
+static if(CompilerHelper.isGreaterThan(2093)) {
+    import core.thread.osthread;
+} else {
+    import core.thread;
+}
+
+import core.time;
+
 import std.conv;
 import std.stdio;
 
