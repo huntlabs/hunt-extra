@@ -583,4 +583,68 @@ class StringUtils {
 		return sb.data;
 	}
 
+    /**
+     * Escape a json value string
+     * 
+     * Examples:
+     *  The "abc\n123" will be escaped as "abc\\n123"
+     * 
+     * See_also:
+     *  https://tools.ietf.org/html/rfc7159#page-8
+     *  https://stackoverflow.com/questions/3020094/how-should-i-escape-strings-in-json?noredirect=1&lq=1
+     */
+    string escapeJson(string value) {
+        if (value.empty) {
+            return "";
+        }
+
+        char c = 0;
+        size_t i;
+        size_t len = value.length;
+        Appender!string sb;
+        string t;
+
+        // sb.put('"');
+        for (i = 0; i < len; i += 1) {
+            c = value[i];
+            switch (c) {
+            case '\\':
+            case '"':
+                sb.put('\\');
+                sb.put(c);
+                break;
+            case '/':
+                //                if (b == '<') {
+                sb.put('\\');
+                //                }
+                sb.put(c);
+                break;
+            case '\b':
+                sb.put("\\b");
+                break;
+            case '\t':
+                sb.put("\\t");
+                break;
+            case '\n':
+                sb.put("\\n");
+                break;
+            case '\f':
+                sb.put("\\f");
+                break;
+            case '\r':
+                sb.put("\\r");
+                break;
+            default:
+                if (c < ' ') {
+                    t = "000" ~ format("%X", c);
+                    sb.put("\\u" ~ t[$ - 4 .. $]);
+                } else {
+                    sb.put(c);
+                }
+            }
+        }
+        //  sb.put('"');
+        return sb.data();
+    }    
+
 }
