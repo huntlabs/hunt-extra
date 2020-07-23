@@ -29,7 +29,8 @@ unittest {
 }
 
 /**
-*/
+ * 
+ */
 struct TypeUtils {
 
     static string getSimpleName(TypeInfo info) {
@@ -41,6 +42,28 @@ struct TypeUtils {
             return name;
         else
             return name[index+1 .. $];
+    }
+
+    static bool isIntegral(TypeInfo typeInfo) {
+        return typeInfo == typeid(int) || typeInfo == typeid(short) || 
+            typeInfo == typeid(long) || typeInfo == typeid(byte);
+    }
+
+    static bool isUsignedIntegral(TypeInfo typeInfo) {
+        return typeInfo == typeid(uint) || typeInfo == typeid(ushort) || 
+            typeInfo == typeid(ulong) || typeInfo == typeid(ubyte);
+    }
+
+    static bool isFloatingPoint(TypeInfo typeInfo) {
+        return typeInfo == typeid(float) || typeInfo == typeid(double) || 
+            typeInfo == typeid(real);
+    }
+
+    static bool isString(TypeInfo typeInfo) {
+        return typeInfo == typeid(string) || typeInfo == typeid(const(char)[]) ||
+            typeInfo == typeid(const(wchar)[]) || typeInfo == typeid(const(dchar)[]) ||
+            typeInfo == typeid(char[]) || typeInfo == typeid(wchar[]) || 
+            typeInfo == typeid(dchar[]);
     }
 
     /**
