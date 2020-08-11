@@ -148,18 +148,18 @@ class SerializationTest {
         assert(result.myInner.name == "test name");
     }
 
-    // void testAssociativeArray() {
+    void testAssociativeArray() {
 
-    //     int[string] data;
-    //     data["total"] = 4;
-    //     data["number"] = 2;
+        int[string] data;
+        data["total"] = 4;
+        data["number"] = 2;
 
-    //     byte[] bs = serialize(data);
-    //     tracef("length: %d, data: %(%02X %)", bs.length, bs);
+        ubyte[] bs = serialize(data);
+        tracef("length: %d, data: %(%02X %)", bs.length, bs);
 
-    //     auto d = unserialize!(int[string])(bs);
-    //     assert(d == data, d.to!string());
-    // }
+        auto d = unserialize!(int[string])(bs);
+        assert(d == data, d.to!string());
+    }
 
     // void testSerializable() {
     //     B b = new B();

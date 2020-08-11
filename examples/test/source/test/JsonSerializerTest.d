@@ -16,6 +16,7 @@ import std.conv;
 import std.format;
 import std.stdio;
 
+
 class JsonSerializerTest {
 
     @Test void testBasic01() {
@@ -79,6 +80,43 @@ class JsonSerializerTest {
             JSONValue json = JsonSerializer.toJson(greeting);
             trace(json.toString());
         }
+
+        {
+            Greeting greeting = new Greeting(1, null);
+            JSONValue json = JsonSerializer.toJson(greeting);
+            warning(json.toString());
+            json = JsonSerializer.toJson!(SerializationOptions.Lite)(greeting);
+            warning(json.toString());
+            json = JsonSerializer.toJson!(SerializationOptions.Normal)(greeting);
+            warning(json.toString());
+            json = JsonSerializer.toJson!(SerializationOptions.OnlyPublicWithNull)(greeting);
+            warning(json.toString());
+        }
+
+        {
+            TestClass testClass02 = new TestClass();
+            testClass02.integer = 12;
+            testClass02.floating = 23.4f;
+
+            ClassMember cm = new ClassMember();
+            cm.name = "Bob";
+
+            testClass02.members ~= cm;
+
+            //
+            JSONValue testJv = JsonSerializer.toJson(testClass02);
+        
+            string s = testJv.toPrettyString();
+            tracef(s);
+
+            TestClass ts02 = JsonSerializer.toObject!(TestClass)(testJv);
+
+            assert(ts02.members.length == 1);
+            assert(ts02.members[0].name == testClass02.members[0].name);
+        }
+
+        //         json = JsonSerializer.toJson!(SerializationOptions.Lite)(greetings);
+//         // info(json.toPrettyString());
         // assert(json.toString() == `{"content":"Hello","id":1}`);
     }
 
@@ -345,7 +383,7 @@ class JsonSerializerTest {
         assert(JsonSerializer.toObject!(int[])(JSONValue([0, 1, 2, 3])) == [0, 1, 2, 3]);
 
         // quirky JSON cases
-        assert(JsonSerializer.toObject!(byte[], false)(JSONValue([0, 1, 2, 3])) == [0, 1, 2, 3]);
+        assert(JsonSerializer.toObject!(byte[])(JSONValue([0, 1, 2, 3])) == [0, 1, 2, 3]);
         assert(JsonSerializer.toObject!(int[])(JSONValue(null)) == []);
         assert(JsonSerializer.toObject!(int[])(JSONValue(false)) == [0]);
         assert(JsonSerializer.toObject!(bool[])(JSONValue(true)) == [true]);
@@ -415,7 +453,6 @@ class JsonSerializerTest {
 
         json = JsonSerializer.toJson!(SerializationOptions.Lite)(greetings);
         // info(json.toPrettyString());
-
     }
 
     void testArrayToJson03() {
@@ -540,6 +577,10 @@ class ClassMember {
 
 class TestClass
 {
+    this() {
+        // member = new ClassMember();
+    }
+
     int integer;
     float floating;
     string text;
@@ -547,4 +588,5 @@ class TestClass
     string[string] dictionary;
     TestStruct testStruct;
     ClassMember member;
+    ClassMember[] members;
 }

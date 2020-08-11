@@ -229,6 +229,8 @@ class Greeting : GreetingBase {
     // 
     string content; // test for the same fieldname
 
+    string nullContent; // test for the same fieldname
+
     SysTime creationTime;
     SysTime[] nullTimes;
     SysTime[] times;
@@ -250,7 +252,8 @@ class Greeting : GreetingBase {
 
     this(int id, string content) {
         super(id, content);
-        this.content = ">>> " ~ content ~ " <<<";
+        this.content = content;
+        // this.content = ">>> " ~ content ~ " <<<";
         // initialization();
     }
 
