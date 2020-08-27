@@ -19,6 +19,8 @@ import std.stdio;
 
 class JsonSerializerTest {
 
+
+
     @Test void testBasic01() {
         const jsonString = `{
             "integer": 42,
@@ -118,6 +120,19 @@ class JsonSerializerTest {
         //         json = JsonSerializer.toJson!(SerializationOptions.Lite)(greetings);
 //         // info(json.toPrettyString());
         // assert(json.toString() == `{"content":"Hello","id":1}`);
+    }
+
+
+    @Test void testBasic03() {
+        const jsonString = "1" ;
+
+        try {
+            TestClass[] testClass = JsonSerializer.toObject!(TestClass[])(jsonString);
+            assert(testClass.length == 0);
+            assert(testClass is null);
+        } catch(Exception ex) {
+            error(ex.msg);
+        }
     }
 
     void testMemberMissing() {
