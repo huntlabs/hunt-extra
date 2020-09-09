@@ -1,6 +1,6 @@
 {
 	"name": "hunt-extra",
-    "description": "An extra library hunt.",
+    "description": "An extra library for Hunt.",
     "copyright": "Copyright (C) 2018-2020, HuntLabs",
     "homepage": "https://www.huntlabs.net",
     "license": "Apache-2.0",
