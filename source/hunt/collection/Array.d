@@ -73,7 +73,7 @@ pure @system unittest
 
 private struct RangeT(A)
 {
-    /* Workaround for Issue 13629 at https://issues.dlang.org/show_bug.cgi?id=13629
+    /* Workaround for https://issues.dlang.org/show_bug.cgi?id=13629
        See also: http://forum.dlang.org/post/vbmwhzvawhnkoxrhbnyb@forum.dlang.org
     */
     private A[1] _outer_;
@@ -137,26 +137,34 @@ private struct RangeT(A)
 
         E moveFront()
         {
-            assert(!empty && _a < _outer.length);
+            assert(!empty, "Attempting to moveFront an empty Array");
+            assert(_a < _outer.length,
+                "Attempting to moveFront using an out of bounds low index on an Array");
             return move(_outer._data._payload[_a]);
         }
 
         E moveBack()
         {
-            assert(!empty && _b  <= _outer.length);
+            assert(!empty, "Attempting to moveBack an empty Array");
+            assert(_a <= _outer.length,
+                "Attempting to moveBack using an out of bounds high index on an Array");
             return move(_outer._data._payload[_b - 1]);
         }
 
         E moveAt(size_t i)
         {
-            assert(_a + i < _b && _a + i < _outer.length);
+            assert(_a + i < _b,
+                "Attempting to moveAt using an out of bounds index on an Array");
+            assert(_a + i < _outer.length,
+                "Cannot move past the end of the array");
             return move(_outer._data._payload[_a + i]);
         }
     }
 
     ref inout(E) opIndex(size_t i) inout
     {
-        assert(_a + i < _b);
+        assert(_a + i < _b,
+            "Attempting to fetch using an out of bounds index on an Array");
         return _outer[_a + i];
     }
 
@@ -167,7 +175,8 @@ private struct RangeT(A)
 
     RangeT opSlice(size_t i, size_t j)
     {
-        assert(i <= j && _a + j <= _b);
+        assert(i <= j && _a + j <= _b,
+            "Attempting to slice using an out of bounds indices on an Array");
         return typeof(return)(_outer, _a + i, _a + j);
     }
 
@@ -178,7 +187,8 @@ private struct RangeT(A)
 
     RangeT!(const(A)) opSlice(size_t i, size_t j) const
     {
-        assert(i <= j && _a + j <= _b);
+        assert(i <= j && _a + j <= _b,
+            "Attempting to slice using an out of bounds indices on an Array");
         return typeof(return)(_outer, _a + i, _a + j);
     }
 
@@ -186,39 +196,45 @@ private struct RangeT(A)
     {
         void opSliceAssign(E value)
         {
-            assert(_b <= _outer.length);
+            assert(_b <= _outer.length,
+                "Attempting to assign using an out of bounds indices on an Array");
             _outer[_a .. _b] = value;
         }
 
         void opSliceAssign(E value, size_t i, size_t j)
         {
-            assert(_a + j <= _b);
+            assert(_a + j <= _b,
+                "Attempting to slice assign using an out of bounds indices on an Array");
             _outer[_a + i .. _a + j] = value;
         }
 
         void opSliceUnary(string op)()
         if (op == "++" || op == "--")
         {
-            assert(_b <= _outer.length);
+            assert(_b <= _outer.length,
+                "Attempting to slice using an out of bounds indices on an Array");
             mixin(op~"_outer[_a .. _b];");
         }
 
         void opSliceUnary(string op)(size_t i, size_t j)
         if (op == "++" || op == "--")
         {
-            assert(_a + j <= _b);
+            assert(_a + j <= _b,
+                "Attempting to slice using an out of bounds indices on an Array");
             mixin(op~"_outer[_a + i .. _a + j];");
         }
 
         void opSliceOpAssign(string op)(E value)
         {
-            assert(_b <= _outer.length);
+            assert(_b <= _outer.length,
+                "Attempting to slice using an out of bounds indices on an Array");
             mixin("_outer[_a .. _b] "~op~"= value;");
         }
 
         void opSliceOpAssign(string op)(E value, size_t i, size_t j)
         {
-            assert(_a + j <= _b);
+            assert(_a + j <= _b,
+                "Attempting to slice using an out of bounds indices on an Array");
             mixin("_outer[_a + i .. _a + j] "~op~"= value;");
         }
     }
@@ -242,12 +258,10 @@ private struct RangeT(A)
  * instead of `array.map!`). The container itself is not a range.
  */
 struct Array(T)
-if (!is(Unqual!T == bool))
+if (!is(immutable T == immutable bool))
 {
-    import core.memory : pureMalloc, pureRealloc, pureFree;
-    private alias malloc = pureMalloc;
-    private alias realloc = pureRealloc;
-    private alias free = pureFree;
+    import core.memory : free = pureFree;
+    // import std.internal.memory : enforceMalloc, enforceRealloc;
     import core.stdc.string : memcpy, memmove, memset;
 
     import core.memory : GC;
@@ -305,17 +319,23 @@ if (!is(Unqual!T == bool))
             if (_capacity < newLength)
             {
                 // enlarge
-                import core.checkedint : mulu;
+                static if (T.sizeof == 1)
+                {
+                    const nbytes = newLength;
+                }
+                else
+                {
+                    import core.checkedint : mulu;
 
-                bool overflow;
-                const nbytes = mulu(newLength, T.sizeof, overflow);
-                if (overflow)
-                    assert(0);
+                    bool overflow;
+                    const nbytes = mulu(newLength, T.sizeof, overflow);
+                    if (overflow)
+                        assert(false, "Overflow");
+                }
 
                 static if (hasIndirections!T)
                 {
-                    auto newPayloadPtr = cast(T*) malloc(nbytes);
-                    newPayloadPtr || assert(false, "std.container.Array.length failed to allocate memory.");
+                    auto newPayloadPtr = cast(T*) enforceMalloc(nbytes);
                     auto newPayload = newPayloadPtr[0 .. newLength];
                     memcpy(newPayload.ptr, _payload.ptr, startEmplace * T.sizeof);
                     memset(newPayload.ptr + startEmplace, 0,
@@ -327,7 +347,7 @@ if (!is(Unqual!T == bool))
                 }
                 else
                 {
-                    _payload = (cast(T*) realloc(_payload.ptr,
+                    _payload = (cast(T*) enforceRealloc(_payload.ptr,
                             nbytes))[0 .. newLength];
                 }
                 _capacity = newLength;
@@ -347,11 +367,18 @@ if (!is(Unqual!T == bool))
         void reserve(size_t elements)
         {
             if (elements <= capacity) return;
-            import core.checkedint : mulu;
-            bool overflow;
-            const sz = mulu(elements, T.sizeof, overflow);
-            if (overflow)
-                assert(0);
+            static if (T.sizeof == 1)
+            {
+                const sz = elements;
+            }
+            else
+            {
+                import core.checkedint : mulu;
+                bool overflow;
+                const sz = mulu(elements, T.sizeof, overflow);
+                if (overflow)
+                    assert(false, "Overflow");
+            }
             static if (hasIndirections!T)
             {
                 /* Because of the transactional nature of this
@@ -361,8 +388,7 @@ if (!is(Unqual!T == bool))
                  */
                 immutable oldLength = length;
 
-                auto newPayloadPtr = cast(T*) malloc(sz);
-                newPayloadPtr || assert(false, "std.container.Array.reserve failed to allocate memory");
+                auto newPayloadPtr = cast(T*) enforceMalloc(sz);
                 auto newPayload = newPayloadPtr[0 .. oldLength];
 
                 // copy old data over to new array
@@ -379,8 +405,7 @@ if (!is(Unqual!T == bool))
             else
             {
                 // These can't have pointers, so no need to zero unused region
-                auto newPayloadPtr = cast(T*) realloc(_payload.ptr, sz);
-                newPayloadPtr || assert(false, "std.container.Array.reserve failed to allocate memory");
+                auto newPayloadPtr = cast(T*) enforceRealloc(_payload.ptr, sz);
                 auto newPayload = newPayloadPtr[0 .. length];
                 _payload = newPayload;
             }
@@ -396,7 +421,8 @@ if (!is(Unqual!T == bool))
             {
                 reserve(1 + capacity * 3 / 2);
             }
-            assert(capacity > length && _payload.ptr);
+            assert(capacity > length && _payload.ptr,
+                "Failed to reserve memory");
             emplace(_payload.ptr + _payload.length, elem);
             _payload = _payload.ptr[0 .. _payload.length + 1];
             return 1;
@@ -419,7 +445,8 @@ if (!is(Unqual!T == bool))
             }
             static if (hasLength!Range)
             {
-                assert(length == oldLength + r.length);
+                assert(length == oldLength + r.length,
+                    "Failed to insertBack range");
             }
             return result;
         }
@@ -433,12 +460,21 @@ if (!is(Unqual!T == bool))
     this(U)(U[] values...)
     if (isImplicitlyConvertible!(U, T))
     {
-        import core.checkedint : mulu;
         import std.conv : emplace;
-        bool overflow;
-        const nbytes = mulu(values.length, T.sizeof, overflow);
-        if (overflow) assert(0);
-        auto p = cast(T*) malloc(nbytes);
+
+        static if (T.sizeof == 1)
+        {
+            const nbytes = values.length;
+        }
+        else
+        {
+            import core.checkedint : mulu;
+            bool overflow;
+            const nbytes = mulu(values.length, T.sizeof, overflow);
+            if (overflow)
+                assert(false, "Overflow");
+        }
+        auto p = cast(T*) enforceMalloc(nbytes);
         static if (hasIndirections!T)
         {
             if (p)
@@ -464,7 +500,7 @@ if (!is(Unqual!T == bool))
     /**
      * Comparison for equality.
      */
-    bool opEquals(Array rhs) 
+    bool opEquals(Array rhs)
     {
         return opEquals(rhs);
     }
@@ -556,12 +592,19 @@ if (!is(Unqual!T == bool))
         if (!_data.refCountedStore.isInitialized)
         {
             if (!elements) return;
-            import core.checkedint : mulu;
-            bool overflow;
-            const sz = mulu(elements, T.sizeof, overflow);
-            if (overflow) assert(0);
-            auto p = malloc(sz);
-            p || assert(false, "std.container.Array.reserve failed to allocate memory");
+            static if (T.sizeof == 1)
+            {
+                const sz = elements;
+            }
+            else
+            {
+                import core.checkedint : mulu;
+                bool overflow;
+                const sz = mulu(elements, T.sizeof, overflow);
+                if (overflow)
+                    assert(false, "Overflow");
+            }
+            auto p = enforceMalloc(sz);
             static if (hasIndirections!T)
             {
                 GC.addRange(p, sz);
@@ -606,19 +649,19 @@ if (!is(Unqual!T == bool))
      */
     Range opSlice(size_t i, size_t j)
     {
-        assert(i <= j && j <= length);
+        assert(i <= j && j <= length, "Invalid slice bounds");
         return typeof(return)(this, i, j);
     }
 
     ConstRange opSlice(size_t i, size_t j) const
     {
-        assert(i <= j && j <= length);
+        assert(i <= j && j <= length, "Invalid slice bounds");
         return typeof(return)(this, i, j);
     }
 
     ImmutableRange opSlice(size_t i, size_t j) immutable
     {
-        assert(i <= j && j <= length);
+        assert(i <= j && j <= length, "Invalid slice bounds");
         return typeof(return)(this, i, j);
     }
 
@@ -631,7 +674,8 @@ if (!is(Unqual!T == bool))
      */
     @property ref inout(T) front() inout
     {
-        assert(_data.refCountedStore.isInitialized);
+        assert(_data.refCountedStore.isInitialized,
+            "Cannot get front of empty range");
         return _data._payload[0];
     }
 
@@ -644,7 +688,8 @@ if (!is(Unqual!T == bool))
      */
     @property ref inout(T) back() inout
     {
-        assert(_data.refCountedStore.isInitialized);
+        assert(_data.refCountedStore.isInitialized,
+            "Cannot get back of empty range");
         return _data._payload[$ - 1];
     }
 
@@ -657,7 +702,8 @@ if (!is(Unqual!T == bool))
      */
     ref inout(T) opIndex(size_t i) inout
     {
-        assert(_data.refCountedStore.isInitialized);
+        assert(_data.refCountedStore.isInitialized,
+            "Cannot index empty range");
         return _data._payload[i];
     }
 
@@ -896,7 +942,8 @@ if (!is(Unqual!T == bool))
         import std.conv : emplace;
         enforce(r._outer._data is _data && r._a <= length);
         reserve(length + 1);
-        assert(_data.refCountedStore.isInitialized);
+        assert(_data.refCountedStore.isInitialized,
+            "Failed to allocate capacity to insertBefore");
         // Move elements over by one slot
         memmove(_data._payload.ptr + r._a + 1,
                 _data._payload.ptr + r._a,
@@ -918,7 +965,8 @@ if (!is(Unqual!T == bool))
             auto extra = walkLength(stuff);
             if (!extra) return 0;
             reserve(length + extra);
-            assert(_data.refCountedStore.isInitialized);
+            assert(_data.refCountedStore.isInitialized,
+                "Failed to allocate capacity to insertBefore");
             // Move elements over by extra slots
             memmove(_data._payload.ptr + r._a + extra,
                     _data._payload.ptr + r._a,
@@ -1225,7 +1273,8 @@ if (!is(Unqual!T == bool))
     assert(a.length == 7);
     assert(equal(a[1 .. 4], [1, 2, 3]));
 }
-// Test issue 5920
+
+// https://issues.dlang.org/show_bug.cgi?id=5920
 @system unittest
 {
     struct structBug5920
@@ -1264,7 +1313,9 @@ if (!is(Unqual!T == bool))
     }
     assert(dMask == 0b1111_1111);   // make sure the d'tor is called once only.
 }
-// Test issue 5792 (mainly just to check if this piece of code is compilable)
+
+// Test for https://issues.dlang.org/show_bug.cgi?id=5792
+// (mainly just to check if this piece of code is compilable)
 @system unittest
 {
     auto a = Array!(int[])([[1,2],[3,4]]);
@@ -1423,7 +1474,8 @@ if (!is(Unqual!T == bool))
     arr ~= s;
 }
 
-@safe unittest //11459
+// https://issues.dlang.org/show_bug.cgi?id=11459
+@safe unittest
 {
     static struct S
     {
@@ -1434,18 +1486,21 @@ if (!is(Unqual!T == bool))
     alias B = Array!(shared bool);
 }
 
-@system unittest //11884
+// https://issues.dlang.org/show_bug.cgi?id=11884
+@system unittest
 {
     import std.algorithm.iteration : filter;
     auto a = Array!int([1, 2, 2].filter!"true"());
 }
 
-@safe unittest //8282
+// https://issues.dlang.org/show_bug.cgi?id=8282
+@safe unittest
 {
     auto arr = new Array!int;
 }
 
-@system unittest //6998
+// https://issues.dlang.org/show_bug.cgi?id=6998
+@system unittest
 {
     static int i = 0;
     class C
@@ -1470,7 +1525,9 @@ if (!is(Unqual!T == bool))
     //Just to make sure the GC doesn't collect before the above test.
     assert(c.dummy == 1);
 }
-@system unittest //6998-2
+
+//https://issues.dlang.org/show_bug.cgi?id=6998 (2)
+@system unittest
 {
     static class C {int i;}
     auto c = new C;
@@ -1530,6 +1587,26 @@ if (!is(Unqual!T == bool))
     ai.insertBack(arr);
 }
 
+/**
+ * typeof may give wrong result in case of classes defining `opCall` operator
+ * https://issues.dlang.org/show_bug.cgi?id=20589
+ *
+ * destructor std.container.array.Array!(MyClass).Array.~this is @system
+ * so the unittest is @system too
+ */
+@system unittest
+{
+    class MyClass
+    {
+        T opCall(T)(T p)
+        {
+            return p;
+        }
+    }
+
+    Array!MyClass arr;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Array!bool
@@ -1540,7 +1617,7 @@ if (!is(Unqual!T == bool))
  * allocating one bit per element.
  */
 struct Array(T)
-if (is(Unqual!T == bool))
+if (is(immutable T == immutable bool))
 {
     import std.exception : enforce;
     import std.typecons : RefCounted, RefCountedAutoInitialize;
@@ -1555,7 +1632,8 @@ if (is(Unqual!T == bool))
 
     private @property ref size_t[] data()
     {
-        assert(_store.refCountedStore.isInitialized);
+        assert(_store.refCountedStore.isInitialized,
+            "Cannot get data of uninitialized Array");
         return _store._backend._payload;
     }
 
@@ -1650,7 +1728,7 @@ if (is(Unqual!T == bool))
         /// Ditto
         @property size_t length() const
         {
-            assert(_a <= _b);
+            assert(_a <= _b, "Invalid bounds");
             return _b - _a;
         }
         alias opDollar = length;
@@ -2172,7 +2250,7 @@ if (is(Unqual!T == bool))
     slice.front = true;
     slice.back = true;
     slice[1] = true;
-    slice = slice[0 .. $]; // bug 19171
+    slice = slice[0 .. $]; // https://issues.dlang.org/show_bug.cgi?id=19171
     assert(slice.front == true);
     assert(slice.back == true);
     assert(slice[1] == true);
@@ -2181,7 +2259,8 @@ if (is(Unqual!T == bool))
     assert(slice.moveAt(1) == true);
 }
 
-// issue 16331 - uncomparable values are valid values for an array
+// uncomparable values are valid values for an array
+// https://issues.dlang.org/show_bug.cgi?id=16331
 @system unittest
 {
     double[] values = [double.nan, double.nan];
@@ -2442,7 +2521,8 @@ if (is(Unqual!T == bool))
     assert(arr[1] == [4, 5, 6]);
 }
 
-// Issue 13642 - Change of length reallocates without calling GC.
+// Change of length reallocates without calling GC.
+// https://issues.dlang.org/show_bug.cgi?id=13642
 @system unittest
 {
     import core.memory;
@@ -2462,4 +2542,61 @@ if (is(Unqual!T == bool))
     foreach (ref b; arr) b = new ABC;
     GC.collect();
     arr[1].func();
+}
+
+
+
+version (D_Exceptions)
+{
+    import core.exception : onOutOfMemoryError;
+    private enum allocationFailed = `onOutOfMemoryError();`;
+}
+else
+{
+    private enum allocationFailed = `assert(0, "Memory allocation failed");`;
+}
+
+// (below comments are non-DDOC, but are written in similar style)
+
+/+
+Mnemonic for `enforce!OutOfMemoryError(malloc(size))` that (unlike malloc)
+can be considered pure because it causes the program to abort if the result
+of the allocation is null, with the consequence that errno will not be
+visibly changed by calling this function. Note that `malloc` can also
+return `null` in non-failure situations if given an argument of 0. Hence,
+it is a programmer error to use this function if the requested allocation
+size is logically permitted to be zero. `enforceCalloc` and `enforceRealloc`
+work analogously.
+
+All these functions are usable in `betterC`.
++/
+void* enforceMalloc()(size_t size) @nogc nothrow pure @safe
+{
+    auto result = fakePureMalloc(size);
+    if (!result) mixin(allocationFailed);
+    return result;
+}
+
+// ditto
+void* enforceCalloc()(size_t nmemb, size_t size) @nogc nothrow pure @safe
+{
+    auto result = fakePureCalloc(nmemb, size);
+    if (!result) mixin(allocationFailed);
+    return result;
+}
+
+// ditto
+void* enforceRealloc()(void* ptr, size_t size) @nogc nothrow pure @system
+{
+    auto result = fakePureRealloc(ptr, size);
+    if (!result) mixin(allocationFailed);
+    return result;
+}
+
+// Purified for local use only.
+extern (C) @nogc nothrow pure private
+{
+    pragma(mangle, "malloc") void* fakePureMalloc(size_t) @safe;
+    pragma(mangle, "calloc") void* fakePureCalloc(size_t nmemb, size_t size) @safe;
+    pragma(mangle, "realloc") void* fakePureRealloc(void* ptr, size_t size) @system;
 }
