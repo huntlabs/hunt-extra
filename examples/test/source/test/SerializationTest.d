@@ -72,12 +72,17 @@ class User {
 
 class Home {
     string _addr;
+    int _id;
+
+	int uid = 9;
+    
     this() {
 
     }
 
-    this(string addr) {
+    this(string addr, int id) {
         this._addr = addr;
+        _id = id;
     }
 
     void setAddr(string addr) {
@@ -104,6 +109,25 @@ class MyClass {
     MyInner myInner;
 }
 
+
+
+class Car {
+
+    int id;
+
+
+    string name;
+
+    int uid;
+
+    UserInfo user;
+}
+
+class UserInfo {
+    int id;
+    string name;
+}
+
 class SerializationTest {
 
     void testObject() {
@@ -115,7 +139,7 @@ class SerializationTest {
         jobs[1] = "Designer";
 
         user.setJobs(jobs);
-        user.setHome([new Home("shanghai"), new Home("shenzhen")]);
+        user.setHome([new Home("shanghai", 11), new Home("shenzhen", 22)]);
 
         Friend friend;
         friend.name = "Bob";
@@ -146,6 +170,45 @@ class SerializationTest {
         assert(result !is null);
         assert(result.myInner !is null);
         assert(result.myInner.name == "test name");
+    }
+
+    void testArray1() {
+        Home[] homes = [new Home("shanghai", 11), new Home("shenzhen", 22)];
+        ubyte[] data = serialize(homes);
+        tracef("%(%02X %)", data);
+
+        Home[] newHomes = unserialize!(Home[])(data);
+        // assert(newHomes.length == 2);
+        foreach(Home h; newHomes) {
+            assert(h !is null);
+            tracef("Name: %s", h.getAddr());
+        }
+    }
+
+
+    void testArray2() {
+        Car car1 = new Car();
+        car1.name = "Ferrari";
+        car1.id = 11;
+
+        Car car2 = new Car();
+        car2.name = "BMW";
+        car2.id = 22;
+
+        Car[] cars = [car1, car2];
+
+
+        ubyte[] buffer = serialize(cars);
+        tracef("%(%02X %)", buffer);
+        Car[] newCars = unserialize!(Car[])(buffer);
+
+        trace(newCars.length);
+        assert(newCars.length == 2);
+
+        foreach(Car c; newCars) {
+            assert(c !is null);
+            tracef(c.name);
+        }
     }
 
     void testAssociativeArray() {
