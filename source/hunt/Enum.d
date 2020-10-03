@@ -191,15 +191,14 @@ T valueOf(T)(string name, T defaultValue = T.init) if(is(T : Enum!(T))) {
     import std.format;
     string s;
 
-    s = format(`foreach(T t; T.%1$s) {
-            if(t.name() == %2$s)
-                return t;
+    s = format(`
+        foreach(T t; T.%1$s) {
+            if(t.name() == %2$s) return t;
         }
-        debug {
-            throw new IllegalArgumentException("Can't locate the member: " ~ %2$s ~ " in " ~ typeid(T).name ~ ".%1$s");
-        } else {
-            return %3$s;
-        }`, memberName, paramName, defaultValue);
+        
+        import hunt.logging.ConsoleLogger;
+        warning("Can't locate the member: " ~ %2$s ~ " in " ~ typeid(T).name ~ ".%1$s");
+        return %3$s;`, memberName, paramName, defaultValue);
 
     return s;
 }
