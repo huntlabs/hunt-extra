@@ -48,7 +48,7 @@ class ScheduledThreadPoolTest {
         //     StringTask task = new StringTask("StringTask " ~ i);
         //     executor.schedule(task, i, TimeUnit.SECONDS);
         // }
-        executor.scheduleAtFixedRate(new FixedRateTase(), Duration.zero, seconds(1));
+        executor.scheduleAtFixedRate(new FixedRateTase(), Duration.zero, seconds(2));
 
         IntTask task3 = new IntTask("IntTask");
         VoidTask task2 = new VoidTask("VoidTask");
@@ -75,7 +75,8 @@ class ScheduledThreadPoolTest {
 
 class FixedRateTase : Runnable {
     void run() {
-        trace("running at fixed rate");
+        info("running at fixed rate");
+        // throw new Exception("An exception thrown.");
     }
 }
 

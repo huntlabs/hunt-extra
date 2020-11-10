@@ -9,6 +9,7 @@ import hunt.util.UnitTest;
 import hunt.util.CompilerHelper;
 static if(CompilerHelper.isGreaterThan(2093)) {
     import core.thread.osthread;
+    import core.thread.threadbase;
 } else {
     import core.thread;
 }

@@ -20,7 +20,6 @@ import std.stdio;
 class JsonSerializerTest {
 
 
-
     @Test void testBasic01() {
         const jsonString = `{
             "integer": 42,
@@ -569,6 +568,29 @@ class JsonSerializerTest {
         assert(itemPtr !is null);
     }
 
+    void testArrayToJson04() {
+        GreetingBase[] greetings1;
+        greetings1 ~= new GreetingBase(1, "Hello");
+        greetings1 ~= new GreetingBase(2, "World");
+
+        GreetingBase[] greetingGroup;
+        greetingGroup ~= new GreetingBase(11, "Hello");
+        greetingGroup ~= new GreetingBase(22, "World");
+
+        GreetingBase[][] greetings = [greetings1, greetingGroup];
+
+        JSONValue json = JsonSerializer.toJson(greetings);
+
+        info(json.toPrettyString());
+
+        GreetingBase[][] greetingGroup2 = JsonSerializer.toObject!(GreetingBase[][])(json);
+
+        foreach(GreetingBase[] items; greetingGroup2) {
+            foreach(GreetingBase subItem; items) {
+                trace(subItem.toString());
+            }
+        }
+    }
 }
 
 

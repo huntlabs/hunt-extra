@@ -26,10 +26,12 @@ import hunt.concurrency.ThreadPoolExecutor;
 
 import hunt.collection.List;
 import hunt.Exceptions;
+import hunt.logging.ConsoleLogger;
 import hunt.util.Common;
 import hunt.util.CompilerHelper;
 import hunt.util.DateTime;
 import hunt.util.Runnable;
+
 
 static if(CompilerHelper.isGreaterThan(2093)) {
     import core.thread.osthread;
@@ -39,17 +41,6 @@ static if(CompilerHelper.isGreaterThan(2093)) {
 
 import core.time;
 import std.conv;
-
-// import static java.lang.ref.Reference.reachabilityFence;
-// import java.security.AccessControlContext;
-// import java.security.AccessControlException;
-// import java.security.AccessController;
-// import java.security.PrivilegedAction;
-// import java.security.PrivilegedActionException;
-// import java.security.PrivilegedExceptionAction;
-// import hunt.collection.Collection;
-// import java.util.List;
-// import sun.security.util.SecurityConstants;
 
 /**
  * Factory and utility methods for {@link Executor}, {@link
@@ -756,7 +747,14 @@ private final class RunnableAdapter(T) : Callable!(T) if(is(T == void)) {
     }
 
     T call() {
-        task.run();
+        try {
+            task.run();
+        } catch(Throwable th) {
+            warning(th.msg);
+            version(HUNT_DEBUG) {
+                warning(th);
+            }
+        }
     }
 
     override string toString() {
@@ -774,7 +772,14 @@ private final class RunnableAdapter(T) : Callable!(T) if(!is(T == void)) {
     }
 
     T call() {
-        task.run();
+        try {
+            task.run();
+        } catch(Throwable th) {
+            warning(th.msg);
+            version(HUNT_DEBUG) {
+                warning(th);
+            }
+        }
         return result;
     }
 
