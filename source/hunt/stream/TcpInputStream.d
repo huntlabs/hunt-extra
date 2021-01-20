@@ -2,6 +2,7 @@ module hunt.stream.TcpInputStream;
 
 import hunt.stream.Common;
 import hunt.io.TcpStream;
+import hunt.io.channel.Common;
 import hunt.logging.ConsoleLogger;
 
 import core.time;
@@ -29,7 +30,7 @@ class TcpInputStream : InputStream {
         _tcp.received(&dataReceived);
     }
 
-    private void dataReceived(ByteBuffer buffer) {
+    private DataHandleStatus dataReceived(ByteBuffer buffer) {
         int size = buffer.remaining();
         if(size == 0) {
             warningf("Empty data");
@@ -39,7 +40,12 @@ class TcpInputStream : InputStream {
             copy.put(buffer).flip();
             version(HUNT_NET_DEBUG) tracef("data enqueue (%s)...", copy.toString());
             _bufferQueue.enqueue(copy);
+            
+            buffer.clear();
+            buffer.flip();
         }
+        
+        return DataHandleStatus.Done;
     }
 
     override int read(byte[] b, int off, int len) {
