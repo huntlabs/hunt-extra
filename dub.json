@@ -5,6 +5,6 @@
     "homepage": "https://www.huntlabs.net",
     "license": "Apache-2.0",
     "dependencies": {
-        "hunt": "~>1.6.8"
+        "hunt": "~>1.7.0-rc.1"
     }
 }
