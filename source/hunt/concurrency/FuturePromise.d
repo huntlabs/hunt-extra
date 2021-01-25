@@ -173,8 +173,8 @@ static if(is(T == void)) {
 
 			version (HUNT_DEBUG) {
 				auto dur = Clock.currTime - start;
-				if(dur > 5.seconds) {
-					warningf("Got a promise in %s", dur);
+				if(dur > timeout) {
+					warningf("Failed to get the promise in %s", dur);
 				} else {
 					// infof("Got a promise in %s", dur);
 				}
