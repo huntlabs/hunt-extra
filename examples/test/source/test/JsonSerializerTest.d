@@ -19,7 +19,6 @@ import std.stdio;
 
 class JsonSerializerTest {
 
-
     @Test void testBasic01() {
         const jsonString = `{
             "integer": 42,
@@ -590,6 +589,19 @@ class JsonSerializerTest {
                 trace(subItem.toString());
             }
         }
+    }
+
+
+    void testArrayToJson05() {
+
+        string[string] arr1 = ["name" : "hunt"];
+        string[string] arr2 = ["version" : "2.0"];
+
+        string[string][] arr = [arr1, arr2];
+
+        JSONValue json = JsonSerializer.toJson(arr); // JSONValue(arr); // 
+
+        // writeln(json.toPrettyString());
     }
 }
 
