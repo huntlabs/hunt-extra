@@ -22,6 +22,7 @@ import hunt.util.ObjectUtils;
 
 import std.algorithm;
 import std.array;
+import std.ascii;
 import std.concurrency : initOnce;
 import std.container.array;
 import std.conv;
@@ -34,8 +35,12 @@ import std.uni;
 
 
 /**
-*/
+ * 
+ */
 class MimeTypeUtils {
+
+    enum EncodingProperties = import("encoding.properties");
+    enum MimeProperties = import("mime.properties");
 
     // Allow installing resources into a shared dir
     private static string getResourcePrefix() {
@@ -54,9 +59,19 @@ class MimeTypeUtils {
         __gshared Map!(string, string) m;
         return initOnce!m({
             Map!(string, string) _m = new HashMap!(string, string)();
-            auto resourcePath = getResourcePrefix();
-            string resourceName = buildPath(resourcePath, "mime.properties");
-            loadMimeProperties(resourceName, _m);
+            // auto resourcePath = getResourcePrefix();
+            // string resourceName = buildPath(resourcePath, "mime.properties");
+            // loadMimeProperties(resourceName, _m);
+            string[] lines = split(MimeProperties, newline);
+            foreach(string line; lines) {
+                string[] parts = split(line, "=");
+                if(parts.length < 2) continue;
+
+                string key = parts[0].strip().toLower();
+                string value = normalizeMimeType(parts[1].strip());
+                // trace(key, " = ", value);
+                _m.put(key, value);                
+            }
             return _m;
         }());
     }
@@ -85,9 +100,14 @@ class MimeTypeUtils {
                     _assumedEncodings.put(type.asString(), type.getCharsetString());
             }
 
-            auto resourcePath = getResourcePrefix();
-            string resourceName = buildPath(resourcePath, "encoding.properties");
-            loadEncodingProperties(resourceName);
+            // auto resourcePath = getResourcePrefix();
+            // string resourceName = buildPath(resourcePath, "encoding.properties");
+            // loadEncodingProperties(resourceName);
+
+            string[] lines = split(EncodingProperties, newline);
+            foreach(string line; lines) {
+                addEncoding(line);
+            }
             return true;
         }());
     }
@@ -148,24 +168,14 @@ class MimeTypeUtils {
             string line;
             int count = 0;
             while((line = f.readln()) !is null) {
-                string[] parts = split(line, "=");
-                if(parts.length < 2) continue;
-
-                count++;
-                string t = parts[0].strip();
-                string charset = parts[1].strip();
-                version(HUNT_DEBUG) trace(t, " = ", charset);
-                if(charset.startsWith("-"))
-                    _assumedEncodings.put(t, charset[1..$]);
-                else
-                    _inferredEncodings.put(t, charset);
+                addEncoding(line);
             }
 
-            if (_inferredEncodings.size() == 0) {
-                warningf("Empty encodings at %s", fileName);
-            } else if (_inferredEncodings.size() + _assumedEncodings.size() < count) {
-                warningf("Null or duplicate encodings in resource: %s", fileName);
-            }            
+            // if (_inferredEncodings.size() == 0) {
+            //     warningf("Empty encodings in resource: %s", fileName);
+            // } else if (_inferredEncodings.size() + _assumedEncodings.size() < count) {
+            //     warningf("Null or duplicate encodings in resource: %s", fileName);
+            // }            
         } catch(Exception ex) {
             warningf(ex.toString());
         }
@@ -383,6 +393,22 @@ class MimeTypeUtils {
             return StringUtils.normalizeCharset(value, start, i - start);
 
         return null;
+    }
+
+    static void addEncoding(string encoding) {
+        string[] parts = split(encoding, "=");
+        if(parts.length < 2) {
+            return;
+        }
+
+        // count++;
+        string t = parts[0].strip();
+        string charset = parts[1].strip();
+        version(HUNT_DEBUG) trace(t, " = ", charset);
+        if(charset.startsWith("-"))
+            _assumedEncodings.put(t, charset[1..$]);
+        else
+            _inferredEncodings.put(t, charset);        
     }
 
     /**
