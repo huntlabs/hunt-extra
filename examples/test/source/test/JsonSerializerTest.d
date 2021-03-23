@@ -19,7 +19,6 @@ import std.stdio;
 
 class JsonSerializerTest {
 
-
     @Test void testBasic01() {
         const jsonString = `{
             "integer": 42,
@@ -60,7 +59,7 @@ class JsonSerializerTest {
 
         TestClass testClass02 = new TestClass();
         testClass02.integer = 12;
-        testClass02.floating = 23.4f;
+        // testClass02.floating = 23.4f;
 
         string s = JsonSerializer.toJson(testClass02).toPrettyString();
         // writeln(s);
@@ -242,6 +241,35 @@ class JsonSerializerTest {
         itemPtr = MetaTypeName in *itemPtr;
         assert(itemPtr !is null);
     }
+
+    void testCircularDependency() {
+        Agent agent = new Agent();
+        agent.name = "Alice";
+        agent.location = "Shanghai";
+
+        AgentCredit credit = new AgentCredit();
+        credit.number = 123;
+
+        credit.agent = agent;
+        agent.credit = credit;
+
+        // ===========
+        JSONValue json = JsonSerializer.toJson(agent);
+
+        info(json.toPrettyString());
+        
+        // ===========
+        json = JsonSerializer.toJson(credit);
+        trace(json.toPrettyString());
+
+        // ===========
+        Company company;
+        company.agent = agent;
+        
+        json = JsonSerializer.toJson(company);
+        trace(json.toPrettyString());
+    }
+
 
     void testComplexMembers() {
         

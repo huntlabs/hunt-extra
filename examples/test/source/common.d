@@ -21,7 +21,8 @@ struct Plant {
 }
 
 /**
-*/
+ * 
+ */
 class FruitBase : Cloneable {
     int number;
 
@@ -41,7 +42,8 @@ class FruitBase : Cloneable {
 }
 
 /**
-*/
+ * 
+ */
 class Fruit : FruitBase {
 
     private string name;
@@ -316,4 +318,31 @@ class Greeting : GreetingBase {
 class Guest {
     string name;
     int age;
+}
+
+
+class Agent : Guest {
+
+    this() {
+        plant.name = "apple";
+        plant.number = 10;
+    }
+
+    string location;
+    
+    AgentCredit credit;
+
+    Plant plant;
+}
+
+class AgentCredit {
+
+    int number;
+
+    // @Ignore
+    Agent agent;
+}
+
+struct Company {
+    Agent agent;
 }
