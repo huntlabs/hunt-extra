@@ -166,7 +166,7 @@ static if(is(T == void)) {
                 Thread.yield();
             }
 
-			if (!_isResultAvaliable) {
+			if (!_done && !_isResultAvaliable) {
 				debug warningf("Timeout for a promise in %s...", timeout);
 				failed(new TimeoutException("Timeout in " ~ timeout.toString()));
             }

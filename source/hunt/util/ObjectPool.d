@@ -1,12 +1,17 @@
 module hunt.util.ObjectPool;
 
+import hunt.concurrency.Future;
+import hunt.concurrency.Promise;
+import hunt.concurrency.FuturePromise;
 import hunt.logging.ConsoleLogger;
 
 import core.atomic;
 import core.sync.mutex;
 
-import std.format;
+import std.container.slist;
 import std.datetime;
+import std.format;
+import std.range : walkLength;
 
 /**
  * Defines the wrapper that is used to track the additional information, such as
@@ -160,6 +165,10 @@ abstract class ObjectFactory(T) {
     void destroyObject(T p) {
         version(HUNT_DEBUG) tracef("Do noting");
     }
+
+    bool isValid() {
+        return true;
+    }
 }
 
 
@@ -248,6 +257,7 @@ class ObjectPool(T) {
     private ObjectFactory!(T) _factory;
     private PooledObject!(T)[] _pooledObjects;
     private Mutex _locker;
+    private SList!(FuturePromise!T) _waiters;
 
     this(size_t size) {
         this(new DefaultObjectFactory!(T)(), size);
@@ -278,12 +288,65 @@ class ObjectPool(T) {
      *
      * @return an instance from this pool.
      */
-    T borrow(bool isQuiet = false) {
+    T borrow(Duration timeout = 10.seconds, bool isQuiet = true) {
+        T r;
+        if(timeout == Duration.zero) {
+            _locker.lock();
+            scope(exit) {
+                _locker.unlock();
+            }
+
+            r = doBorrow();
+            if(r is null && !isQuiet) {
+                throw new Exception("No idle object avaliable.");
+            }
+        } else {
+            Future!T future = borrowAsync();
+            if(timeout.isNegative()) {
+                r = future.get();
+            } else {
+                r = future.get(timeout);
+            }
+        }
+        return r;
+    }    
+
+
+    /**
+     * 
+     */
+    Future!T borrowAsync() {
         _locker.lock();
         scope(exit) {
             _locker.unlock();
         }
+        
+        FuturePromise!T promise = new FuturePromise!T();
 
+        if(_waiters.empty()) {
+            T r = doBorrow();
+            if(r is null) {
+                _waiters.stableInsert(promise);
+                version(HUNT_DEBUG) {
+                    warningf("New waiter...%d", getNumWaiters());
+                }
+            } else {
+                promise.succeeded(r);
+            }
+        } else {
+            _waiters.stableInsert(promise);
+            version(HUNT_DEBUG) {
+                warningf("New waiter...%d", getNumWaiters());
+            }
+        }
+
+        return promise;
+    }
+
+    /**
+     * 
+     */
+    private T doBorrow() {
         PooledObject!(T) pooledObj;
         for(size_t index; index<_pooledObjects.length; index++) {
             pooledObj = _pooledObjects[index];
@@ -300,23 +363,20 @@ class ObjectPool(T) {
         }
         
         if(pooledObj is null) {
-            if(isQuiet) return T.init;
-            else {
-                throw new Exception("No object avaliable");
+            version(HUNT_DEBUG) {
+                warning("No idle object avaliable.");
             }
+            return null;
         }
         
         pooledObj.allocate();
-        tracef("borrowed: id=%d, createTime=%s", 
-            pooledObj.id, pooledObj.createTime()); 
-        return pooledObj.getObject();
+
+        version(HUNT_DEBUG) {
+            tracef("borrowed: id=%d, createTime=%s", 
+                pooledObj.id, pooledObj.createTime()); 
+        }
+        return pooledObj.getObject();        
     }
-
-    // TODO: Tasks pending completion -@zhangxueping at 2021-03-21T16:02:17+08:00
-    // 
-    // T borrowAsync() {
-
-    // }    
 
     /**
      * Returns an instance to the pool. By contract, <code>obj</code>
@@ -327,9 +387,23 @@ class ObjectPool(T) {
      */
     void returnObject(T obj) {
         if(obj is null) {
-            warning("Do nothing");
+            version(HUNT_DEBUG) warning("Do nothing");
             return;
         }
+
+        scope(exit) {
+            _locker.lock();
+            scope(exit) {
+                _locker.unlock();
+            }
+            handleWaiters();
+        }
+
+        doReturning(obj);
+    } 
+
+    private bool doReturning(T obj) {
+        bool result = false;
 
         PooledObject!(T) pooledObj;
         for(size_t index; index<_pooledObjects.length; index++) {
@@ -340,19 +414,59 @@ class ObjectPool(T) {
             
             T underlyingObj = pooledObj.getObject();
             if(underlyingObj is obj) {
-                tracef("returning: id=%d, state=%s, count=%s, createTime=%s", 
-                    pooledObj.id, pooledObj.state(), pooledObj.borrowedCount(), pooledObj.createTime()); 
-                bool r = pooledObj.deallocate();
-                if(r) {
-                    infof("Returned: id=%d", pooledObj.id);
-                } else {
-                    warningf("Return failed: id=%d", pooledObj.id);
+                version(HUNT_DEBUG) {
+                    tracef("returning: id=%d, state=%s, count=%s, createTime=%s", 
+                        pooledObj.id, pooledObj.state(), pooledObj.borrowedCount(), pooledObj.createTime()); 
+                }
+                    
+                // pooledObj.returning();
+                result = pooledObj.deallocate();
+                version(HUNT_DEBUG) {
+                    if(result) {
+                        infof("Returned: id=%d", pooledObj.id);
+                    } else {
+                        warningf("Return failed: id=%d", pooledObj.id);
+                    }
                 }
                 break;
             }
         }
-    } 
 
+        version(HUNT_DEBUG) {
+            trace(toString());
+        }
+        return result;
+    }
+
+    private void handleWaiters() {
+        if(_waiters.empty())
+            return;
+        
+        FuturePromise!T waiter = _waiters.front();
+
+        // clear up all the finished waiter
+        while(waiter.isDone()) {
+            _waiters.removeFront();
+            if(_waiters.empty()) {
+                return;
+            }
+
+            waiter = _waiters.front();
+        }
+
+        // 
+        T r = doBorrow();
+        if(r is null) {
+            warning("No idle object avaliable for waiter");
+        } else {
+            _waiters.removeFront();
+            try {
+                waiter.succeeded(r);
+            } catch(Exception ex) {
+                warning(ex);
+            }
+        }
+    }
 
     /**
      * Returns the number of instances currently idle in this pool. This may be
@@ -388,6 +502,18 @@ class ObjectPool(T) {
         }
 
         return count;        
+    }
+
+    /**
+     * Returns an estimate of the number of threads currently blocked waiting for
+     * an object from the pool. This is intended for monitoring only, not for
+     * synchronization control.
+     *
+     * @return The estimate of the number of threads currently blocked waiting
+     *         for an object from the pool
+     */
+    size_t getNumWaiters() {
+        return walkLength(_waiters[]);
     }
 
     /**
@@ -435,8 +561,8 @@ class ObjectPool(T) {
     }
 
     override string toString() {
-        string str = format("Total: %d, Active: %d, Idle: %d", 
-                size(), getNumActive(),  getNumIdle());
+        string str = format("Total: %d, Active: %d, Idle: %d, Waiters: %d", 
+                size(), getNumActive(),  getNumIdle(), getNumWaiters());
         return str;
     }
 }
