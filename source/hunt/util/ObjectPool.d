@@ -372,7 +372,7 @@ class ObjectPool(T) {
         pooledObj.allocate();
 
         version(HUNT_DEBUG) {
-            tracef("borrowed: id=%d, createTime=%s", 
+            infof("borrowed: id=%d, createTime=%s", 
                 pooledObj.id, pooledObj.createTime()); 
         }
         return pooledObj.getObject();        
@@ -387,7 +387,7 @@ class ObjectPool(T) {
      */
     void returnObject(T obj) {
         if(obj is null) {
-            version(HUNT_DEBUG) warning("Do nothing");
+            version(HUNT_DEBUG) warning("Do nothing for a null object");
             return;
         }
 
@@ -414,7 +414,7 @@ class ObjectPool(T) {
             
             T underlyingObj = pooledObj.getObject();
             if(underlyingObj is obj) {
-                version(HUNT_DEBUG) {
+                version(HUNT_DEBUG_MORE) {
                     tracef("returning: id=%d, state=%s, count=%s, createTime=%s", 
                         pooledObj.id, pooledObj.state(), pooledObj.borrowedCount(), pooledObj.createTime()); 
                 }
@@ -433,7 +433,7 @@ class ObjectPool(T) {
         }
 
         version(HUNT_DEBUG) {
-            trace(toString());
+            info(toString());
         }
         return result;
     }
