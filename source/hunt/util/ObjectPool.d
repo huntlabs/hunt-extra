@@ -8,7 +8,7 @@ import hunt.logging.ConsoleLogger;
 import core.atomic;
 import core.sync.mutex;
 
-import std.container.slist;
+import std.container.dlist;
 import std.datetime;
 import std.format;
 import std.range : walkLength;
@@ -257,7 +257,7 @@ class ObjectPool(T) {
     private ObjectFactory!(T) _factory;
     private PooledObject!(T)[] _pooledObjects;
     private Mutex _locker;
-    private SList!(FuturePromise!T) _waiters;
+    private DList!(FuturePromise!T) _waiters;
 
     this(size_t size) {
         this(new DefaultObjectFactory!(T)(), size);
