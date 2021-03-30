@@ -1,252 +1,34 @@
-module hunt.util.ObjectPool;
+module hunt.util.pool.ObjectPool;
 
 import hunt.concurrency.Future;
 import hunt.concurrency.Promise;
 import hunt.concurrency.FuturePromise;
 import hunt.logging.ConsoleLogger;
 
-import core.atomic;
 import core.sync.mutex;
 
 import std.container.dlist;
-import std.datetime;
+import core.time;
 import std.format;
 import std.range : walkLength;
 
-/**
- * Defines the wrapper that is used to track the additional information, such as
- * state, for the pooled objects.
- * <p>
- * Implementations of this class are required to be thread-safe.
- *
- * @param <T> the type of object in the pool
- *
- */
-class PooledObject(T) {
-    private size_t _id;
-    private T _obj;
-    private PooledObjectState _state;
-    private SysTime _createTime;
-    private SysTime _lastBorrowTime;
-    private SysTime _lastUseTime;
-    private SysTime _lastReturnTime;
-    private shared long _borrowedCount = 0;
-    private static shared size_t _counter;
-
-    this(T obj) {
-        _obj = obj;
-        _state = PooledObjectState.IDLE;
-        _createTime = Clock.currTime;
-        _id = atomicOp!("+=")(_counter, 1);
-    }
-
-    size_t id() {
-        return _id;
-    }
-
-    /**
-     * Obtains the underlying object that is wrapped by this instance of
-     * {@link PooledObject}.
-     *
-     * @return The wrapped object
-     */
-    T getObject() {
-        return _obj;
-    }  
-
-    SysTime createTime() {
-        return _createTime;
-    }    
-
-    SysTime lastBorrowTime() {
-        return _lastBorrowTime;
-    }
-
-    SysTime lastReturnTime() {
-        return _lastReturnTime;
-    }
-
-    /**
-     * Get the number of times this object has been borrowed.
-     * @return The number of times this object has been borrowed.
-     */
-    long borrowedCount() {
-        return _borrowedCount;
-    }
-
-    /**
-     * Returns the state of this object.
-     * @return state
-     */
-    PooledObjectState state() {
-        return _state;
-    }
-
-    /**
-     * Allocates the object.
-     *
-     * @return {@code true} if the original state was {@link PooledObjectState#IDLE IDLE}
-     */
-    bool allocate() {
-        if (_state == PooledObjectState.IDLE) {
-            _state = PooledObjectState.ALLOCATED;
-            _lastBorrowTime = Clock.currTime;
-            _lastUseTime = _lastBorrowTime;
-            atomicOp!("+=")(_borrowedCount, 1);
-            // if (logAbandoned) {
-            //     borrowedBy.fillInStackTrace();
-            // }
-            return true;
-        } 
-        
-        // else if (state == PooledObjectState.EVICTION) {
-        //     // TODO Allocate anyway and ignore eviction test
-        //     state = PooledObjectState.EVICTION_RETURN_TO_HEAD;
-        //     return false;
-        // }
-        // TODO if validating and testOnBorrow == true then pre-allocate for
-        // performance
-        return false;        
-    }
-
-    /**
-     * Deallocates the object and sets it {@link PooledObjectState#IDLE IDLE}
-     * if it is currently {@link PooledObjectState#ALLOCATED ALLOCATED}.
-     *
-     * @return {@code true} if the state was {@link PooledObjectState#ALLOCATED ALLOCATED}
-     */
-    bool deallocate() {
-
-        if (_state == PooledObjectState.ALLOCATED || _state == PooledObjectState.RETURNING) {
-            _state = PooledObjectState.IDLE;
-            _lastReturnTime = Clock.currTime;
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Sets the state to {@link PooledObjectState#INVALID INVALID}
-     */
-    void invalidate() { // synchronized
-        _state = PooledObjectState.INVALID;
-    }
-
-
-    /**
-     * Marks the pooled object as abandoned.
-     */
-    void abandoned() { // synchronized
-        _state = PooledObjectState.ABANDONED;
-    }
-
-    /**
-     * Marks the object as returning to the pool.
-     */
-    void returning() { // synchronized
-        _state = PooledObjectState.RETURNING;
-    }
-
-    bool isIdle() {
-        return _state == PooledObjectState.IDLE;
-    }
-
-    bool isInUse() {
-        return _state == PooledObjectState.ALLOCATED;
-    }
-}
-
-
-abstract class ObjectFactory(T) {
-
-    T makeObject();
-
-    void destroyObject(T p) {
-        version(HUNT_DEBUG) tracef("Do noting");
-    }
-
-    bool isValid() {
-        return true;
-    }
-}
-
-
-class DefaultObjectFactory(T) : ObjectFactory!(T) {
-
-    override T makeObject() {
-        return new T();
-    }
-
-}
-
+import hunt.util.pool.ObjectFactory;
+import hunt.util.pool.PooledObject;
 
 /**
- * Provides the possible states that a {@link PooledObject} may be in.
- *
+ * 
  */
-enum PooledObjectState {
-    /**
-     * In the queue, not in use.
-     */
-    IDLE,
+enum CreationMode {
+    Lazy,
+    Eager
+}
 
-    /**
-     * In use.
-     */
-    ALLOCATED,
-
-    // /**
-    //  * In the queue, currently being tested for possible eviction.
-    //  */
-    // EVICTION,
-
-    // /**
-    //  * Not in the queue, currently being tested for possible eviction. An
-    //  * attempt to borrow the object was made while being tested which removed it
-    //  * from the queue. It should be returned to the head of the queue once
-    //  * eviction testing completes.
-    //  * TODO: Consider allocating object and ignoring the result of the eviction
-    //  *       test.
-    //  */
-    // EVICTION_RETURN_TO_HEAD,
-
-    /**
-     * In the queue, currently being validated.
-     */
-    VALIDATION,
-
-    // /**
-    //  * Not in queue, currently being validated. The object was borrowed while
-    //  * being validated and since testOnBorrow was configured, it was removed
-    //  * from the queue and pre-allocated. It should be allocated once validation
-    //  * completes.
-    //  */
-    // VALIDATION_PREALLOCATED,
-
-    // /**
-    //  * Not in queue, currently being validated. An attempt to borrow the object
-    //  * was made while previously being tested for eviction which removed it from
-    //  * the queue. It should be returned to the head of the queue once validation
-    //  * completes.
-    //  */
-    // VALIDATION_RETURN_TO_HEAD,
-
-    /**
-     * Failed maintenance (e.g. eviction test or validation) and will be / has
-     * been destroyed
-     */
-    INVALID,
-
-    /**
-     * Deemed abandoned, to be invalidated.
-     */
-    ABANDONED,
-
-    /**
-     * Returning to the pool.
-     */
-    RETURNING
+/**
+ * 
+ */
+class PoolOptions {
+    size_t size = 5;
+    CreationMode creationMode = CreationMode.Lazy;
 }
 
 
@@ -258,19 +40,21 @@ class ObjectPool(T) {
     private PooledObject!(T)[] _pooledObjects;
     private Mutex _locker;
     private DList!(FuturePromise!T) _waiters;
+    private PoolOptions _poolOptions;
 
-    this(size_t size) {
-        this(new DefaultObjectFactory!(T)(), size);
+    this(PoolOptions options) {
+        this(new DefaultObjectFactory!(T)(), options);
     }
 
-    this(ObjectFactory!(T) factory, size_t size) {
+    this(ObjectFactory!(T) factory, PoolOptions options) {
         _factory = factory;
-        _pooledObjects = new PooledObject!(T)[size];
+        _poolOptions = options;
+        _pooledObjects = new PooledObject!(T)[options.size];
         _locker = new Mutex();
     }
 
     size_t size() {
-        return _pooledObjects.length;
+        return _poolOptions.size;
     }
 
     /**
