@@ -19,6 +19,9 @@ import hunt.logging.ConsoleLogger;
 
 import core.atomic;
 import core.thread;
+import core.sync.mutex;
+import core.sync.condition;
+
 import std.format;
 import std.datetime;
 
@@ -26,16 +29,16 @@ import std.datetime;
  * 
  */
 class FuturePromise(T) : Future!T, Promise!T {
-	private __gshared Exception COMPLETED;
-	private shared bool _done = false;
-	private bool _isResultAvaliable = false;
+	private shared bool _isCompleting = false;
+	private bool _isCompleted = false;
 	private Exception _cause;
 	private string _id;
-	shared static this() {
-		COMPLETED = new Exception("");
-	}
+	private Mutex _waiterLocker;
+	private Condition _waiterCondition;
 
 	this() {
+		_waiterLocker = new Mutex(this);
+		_waiterCondition = new Condition(_waiterLocker);
 	}
 
 	string id() {
@@ -54,11 +57,12 @@ static if(is(T == void)) {
 	 * 	2) return a flag to indicate whether this option is successful.
 	 */
 	void succeeded() {
-		if (cas(&_done, false, true)) {
-			_cause = COMPLETED;
-			_isResultAvaliable = true;
+		if (cas(&_isCompleting, false, true)) {
+			// _cause = COMPLETED;
+			onCompleted();
 		} else {
-			warning("This promise has been done, and can't be set again.");
+			warningf("This promise has been done, and can't be set again. cause: %s", 
+				typeid(_cause));
 		}
 	}
 
@@ -70,10 +74,9 @@ static if(is(T == void)) {
 	 * 	2) return a flag to indicate whether this option is successful.
 	 */
 	void succeeded(T result) {
-		if (cas(&_done, false, true)) {
+		if (cas(&_isCompleting, false, true)) {
 			_result = result;
-			_cause = COMPLETED;
-			_isResultAvaliable = true;
+			onCompleted();
 		} else {
 			warning("This promise has been done, and can't be set again.");
 		}
@@ -87,28 +90,38 @@ static if(is(T == void)) {
 	 * 	2) return a flag to indicate whether this option is successful.
 	 */
 	void failed(Exception cause) {
-		if (cas(&_done, false, true)) {
-			_cause = cause;
-			_isResultAvaliable = true;
+		if (cas(&_isCompleting, false, true)) {
+			_cause = cause;	
+			onCompleted();		
 		} else {
-			warning("This promise has been done, and can't be set again.");
+			warningf("This promise has been done, and can't be set again. cause: %s", 
+				typeid(_cause));
 		}
 	}
 
 	bool cancel(bool mayInterruptIfRunning) {
-		if (cas(&_done, false, true)) {
+		if (cas(&_isCompleting, false, true)) {
 			static if(!is(T == void)) {
 				_result = T.init;
 			}
 			_cause = new CancellationException("");
-			_isResultAvaliable = true;
+			onCompleted();
 			return true;
 		}
 		return false;
 	}
 
+	private void onCompleted() {
+		_waiterLocker.lock();
+		_isCompleted = true;
+		scope(exit) {
+			_waiterLocker.unlock();
+		}
+		_waiterCondition.notifyAll();
+	}
+
 	bool isCancelled() {
-		if (_done) {
+		if (_isCompleted) {
 			try {
 				// _latch.await();
 				// TODO: Tasks pending completion -@zhangxueping at 2019-12-26T15:18:42+08:00
@@ -122,21 +135,47 @@ static if(is(T == void)) {
 	}
 
 	bool isDone() {
-		return _done;
+		return _isCompleted;
 	}
 
 	T get() {
-		// waitting for the result
-		version (HUNT_DEBUG) info("Waiting for a promise...");
-		while(!_isResultAvaliable) {
-            Thread.yield();
-			version(HUNT_DANGER_DEBUG) trace("Waiting for a promise");
-		}
+		return get(-1.msecs);
+	}
 
-		version (HUNT_DEBUG) info("Got a promise");
-		assert(_cause !is null);
+	T get(Duration timeout) {
+		// waitting for the completion
+		if(!_isCompleted) {
+			_waiterLocker.lock();
+			scope(exit) {
+				_waiterLocker.unlock();
+			}
 
-		if (_cause is COMPLETED) {
+			if(timeout.isNegative()) {
+				version (HUNT_DEBUG) info("Waiting for a promise...");
+				_waiterCondition.wait();
+			} else {
+				version (HUNT_DEBUG) {
+					infof("Waiting for a promise in %s...", timeout);
+				}
+				bool r = _waiterCondition.wait(timeout);
+				if(!r) {
+					debug warningf("Timeout for a promise in %s...", timeout);
+					if (cas(&_isCompleting, false, true)) {
+						_isCompleted = true;
+						_cause = new TimeoutException("Timeout in " ~ timeout.toString());
+					}
+				}
+			}
+			
+			if(_cause is null) {
+				version (HUNT_DEBUG) infof("Got a succeeded promise.");
+			} else {
+				version (HUNT_DEBUG) warningf("Got a failed promise: %s", typeid(_cause));
+			}
+		} 
+
+		// succeeded
+		if (_cause is null) {
 			static if(is(T == void)) {
 				return;
 			} else {
@@ -153,58 +192,13 @@ static if(is(T == void)) {
 		debug warning("Get a exception in a promise: ", _cause.msg);
 		version (HUNT_DEBUG) warning(_cause);
 		throw new ExecutionException(_cause);
-	}
-
-	T get(Duration timeout) {
-		// waitting for the result
-		if(!_isResultAvaliable) {
-			version (HUNT_DEBUG) {
-				infof("Waiting for a promise in %s...", timeout);
-			}
-            auto start = Clock.currTime;
-            while (!_isResultAvaliable && Clock.currTime < start + timeout) {
-                Thread.yield();
-            }
-
-			if (!_isResultAvaliable) {
-				debug warningf("Timeout for a promise in %s...", timeout);
-				failed(new TimeoutException("Timeout in " ~ timeout.toString()));
-            }
-
-			version (HUNT_DEBUG) {
-				auto dur = Clock.currTime - start;
-				if(dur > timeout) {
-					warningf("Failed to get the promise in %s", dur);
-				} else {
-					// infof("Got a promise in %s", dur);
-				}
-			}
-		}		
-
-		if (_cause is COMPLETED) {
-			static if(is(T == void)) {
-				return;
-			} else {
-				return _result;
-			}
-		}
-
-		TimeoutException t = cast(TimeoutException) _cause;
-		if (t !is null)
-			throw t;
-
-		CancellationException c = cast(CancellationException) _cause;
-		if (c !is null)
-			throw c;
-
-		throw new ExecutionException(_cause.msg);
-	}
+	}	
 
 	override string toString() {
 		static if(is(T == void)) {
-			return format("FutureCallback@%x{%b, %b, void}", toHash(), _done, _cause is COMPLETED);
+			return format("FutureCallback@%x{%b, %b, void}", toHash(), _isCompleted, _cause is null);
 		} else {
-			return format("FutureCallback@%x{%b, %b, %s}", toHash(), _done, _cause is COMPLETED, _result);
+			return format("FutureCallback@%x{%b, %b, %s}", toHash(), _isCompleted, _cause is null, _result);
 		}
 	}
 }
