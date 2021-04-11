@@ -10,7 +10,7 @@ abstract class ObjectFactory(T) {
         version(HUNT_DEBUG) tracef("Do noting");
     }
 
-    bool isValid() {
+    bool isValid(T p) {
         return true;
     }
 }
