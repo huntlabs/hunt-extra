@@ -132,14 +132,38 @@ class ObjectPool(T) {
      */
     private T doBorrow() {
         PooledObject!(T) pooledObj;
+
         for(size_t index; index<_pooledObjects.length; index++) {
             pooledObj = _pooledObjects[index];
+
             if(pooledObj is null) {
                 T underlyingObj = _factory.makeObject();
                 pooledObj = new PooledObject!(T)(underlyingObj);
                 _pooledObjects[index] = pooledObj;
                 break;
             } else if(pooledObj.isIdle()) {
+                T underlyingObj = pooledObj.getObject();
+                bool isValid = _factory.isValid(underlyingObj);
+                if(!isValid) {
+                    pooledObj.invalidate();
+                    version(HUNT_DEBUG) {
+                        warningf("An invalid object (id=%d) detected at slot %d.", pooledObj.id, index);
+                    }
+                    _factory.destroyObject(underlyingObj);
+                    underlyingObj = _factory.makeObject();
+                    pooledObj = new PooledObject!(T)(underlyingObj);
+                    _pooledObjects[index] = pooledObj;
+                }
+                break;
+            } else if(pooledObj.isInvalid()) {
+                T underlyingObj = pooledObj.getObject();
+                version(HUNT_DEBUG) {
+                    warningf("An invalid object (id=%d) detected at slot %d.", pooledObj.id, index);
+                }
+                _factory.destroyObject(underlyingObj);
+                underlyingObj = _factory.makeObject();
+                pooledObj = new PooledObject!(T)(underlyingObj);
+                _pooledObjects[index] = pooledObj;
                 break;
             }
 
@@ -156,8 +180,8 @@ class ObjectPool(T) {
         pooledObj.allocate();
 
         version(HUNT_DEBUG) {
-            infof("borrowed: id=%d, createTime=%s", 
-                pooledObj.id, pooledObj.createTime()); 
+            infof("borrowed: id=%d, createTime=%s; pool status = { %s }", 
+                pooledObj.id, pooledObj.createTime(), toString()); 
         }
         return pooledObj.getObject();        
     }
@@ -308,8 +332,28 @@ class ObjectPool(T) {
      * @throws Exception if the pool cannot be cleared
      */
     void clear() {
-        
-        warning("TODO");
+        version(HUNT_DEBUG) {
+            info("Pool is clearing...");
+        }
+
+        _locker.lock();
+        scope(exit) {
+            _locker.unlock();
+        }
+
+        for(size_t index; index<_pooledObjects.length; index++) {
+            PooledObject!(T) obj = _pooledObjects[index];
+
+            if(obj !is null) {
+                version(HUNT_DEBUG) {
+                    tracef("clearing object: id=%d, slot=%d", obj.id, index);
+                }
+
+                _pooledObjects[index] = null;
+                obj.abandoned();
+                _factory.destroyObject(obj.getObject());
+            }
+        }
     }
 
     /**
@@ -336,6 +380,10 @@ class ObjectPool(T) {
             PooledObject!(T) obj = _pooledObjects[index];
 
             if(obj !is null) {
+                version(HUNT_DEBUG) {
+                    tracef("destroying object: id=%d, slot=%d", obj.id, index);
+                }
+
                 _pooledObjects[index] = null;
                 obj.abandoned();
                 _factory.destroyObject(obj.getObject());

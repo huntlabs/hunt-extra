@@ -147,4 +147,8 @@ class PooledObject(T) {
     bool isInUse() {
         return _state == PooledObjectState.ALLOCATED;
     }
+
+    bool isInvalid() {
+        return _state == PooledObjectState.INVALID;
+    }
 }
