@@ -4,7 +4,6 @@
     "copyright": "Copyright (C) 2018-2021, HuntLabs",
     "homepage": "https://www.huntlabs.net",
     "license": "Apache-2.0",
-	"dflags": ["-J"],
 	"stringImportPaths": [
 		"resources"
 	],

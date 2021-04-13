@@ -155,7 +155,17 @@ class ObjectPool(T) {
                     _pooledObjects[index] = pooledObj;
                 }
                 break;
-            } 
+            } else if(pooledObj.isInvalid()) {
+                T underlyingObj = pooledObj.getObject();
+                version(HUNT_DEBUG) {
+                    warningf("An invalid object (id=%d) detected at slot %d.", pooledObj.id, index);
+                }
+                _factory.destroyObject(underlyingObj);
+                underlyingObj = _factory.makeObject();
+                pooledObj = new PooledObject!(T)(underlyingObj);
+                _pooledObjects[index] = pooledObj;
+                break;
+            }
 
             pooledObj = null;
         }
