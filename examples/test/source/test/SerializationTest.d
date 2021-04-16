@@ -157,7 +157,8 @@ class SerializationTest {
         tracef("%(%02X %)", buffer);
 
         string result = unserialize!(string)(buffer);
-        tracef(result);
+        trace(result);
+        assert(result == message);
     }
 
     void testNestedClass() {
@@ -208,6 +209,28 @@ class SerializationTest {
         foreach(Car c; newCars) {
             assert(c !is null);
             tracef(c.name);
+        }
+    }
+
+    void testArray3() {
+
+        {
+            long[] numbers = [23, long.max, 45];
+            ubyte[] data = serialize(numbers);
+            long[] numbers2 = unserialize!(long[])(data);
+
+            trace(numbers2);
+            assert(numbers == numbers2);
+        }
+        
+
+        {
+            int[] numbers = [23, int.max, 45];
+            ubyte[] data = serialize(numbers);
+            int[] numbers2 = unserialize!(int[])(data);
+
+            trace(numbers2);
+            assert(numbers == numbers2);
         }
     }
 

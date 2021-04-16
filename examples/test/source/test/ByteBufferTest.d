@@ -67,9 +67,9 @@ class ByteBufferTest {
         ByteBuffer bbfilled = allocate();
         ByteBuffer bb = allocate(i => 0);
         
-        byte[] data = bbfilled.getRemaining();
+        byte[] data = bbfilled.peekRemaining();
         // tracef("bbfilled: %(%02X %)", data);
-        data = bb.getRemaining();
+        data = bb.peekRemaining();
         // tracef("bb: %(%02X %)", data);
 
         for (int i = 0; i < bb.limit(); i = i + 4) {
@@ -78,7 +78,7 @@ class ByteBufferTest {
             bb.putInt(i, fromFilled);
             int fromMethodView = bb.getInt(i);
 
-            data = bb.getRemaining();
+            data = bb.peekRemaining();
             // tracef("%(%02X %)", data);
             assertValues(i, fromFilled, fromMethodView, bb);
         }
@@ -87,10 +87,10 @@ class ByteBufferTest {
     void testLong() {
         ByteBuffer bbfilled = allocate();
         ByteBuffer bb = allocate(i => 0);
-        byte[] data = bbfilled.getRemaining();
+        byte[] data = bbfilled.peekRemaining();
 
         // tracef("bbfilled: %(%02X %)", data);
-        data = bb.getRemaining();
+        data = bb.peekRemaining();
 
         // tracef("bb: %(%02X %)", data);
 
@@ -100,7 +100,7 @@ class ByteBufferTest {
             bb.putLong(i, fromFilled);
             long fromMethodView = bb.getLong(i);
 
-            data = bb.getRemaining();
+            data = bb.peekRemaining();
             // tracef("%(%02X %)", data);
             assertValues(i, fromFilled, fromMethodView, bb);
         }
