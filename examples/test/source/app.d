@@ -24,6 +24,7 @@ import test.NumberTest;
 import test.ObjectMappingTest;
 import test.PathMatcherTest;
 import test.PropertySetterTest;
+import test.PromiseTest;
 import test.ScheduledThreadPoolTest;
 import test.SerializationTest;
 import test.StringTokenizerTest;
@@ -93,10 +94,13 @@ void main()
     // testUnits!(DeductionTest);
 
     // testUnits!(JsonSerializerTest);
-    testUnits!(SerializationTest);
+    // testUnits!(SerializationTest);
     // testUnits!(ObjectMappingTest);
 
     // testUnits!(ByteBufferTest);
+
+    
+    testUnits!(PromiseTest);
 
 }
 

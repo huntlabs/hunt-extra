@@ -25,6 +25,9 @@ import core.sync.condition;
 import std.format;
 import std.datetime;
 
+alias ThenHandler(T) = void delegate(T);
+alias VoidHandler = void delegate();
+
 /**
  * 
  */
@@ -49,8 +52,31 @@ class FuturePromise(T) : Future!T, Promise!T {
 		_id = id;
 	}
 
+	ThenHandler!(Exception) _thenFailedHandler;
+
 static if(is(T == void)) {
-	
+	VoidHandler _thenSucceededHandler;
+
+	FuturePromise!R then(R)(R delegate() handler) {
+		FuturePromise!R result = new FuturePromise!(R);
+		_thenSucceededHandler = () {
+			try {
+				R r = handler();
+				result.succeeded(r);
+			} catch(Exception ex) {
+				Exception e = new Exception("then exception", ex);
+				result.failed(e);
+			}
+		};
+
+		_thenFailedHandler = (Exception ex) {
+			Exception e = new Exception("then exception", ex);
+			result.failed(e);
+		};
+
+		return result;
+	}
+
 	/**
 	 * TODO: 
 	 * 	1) keep this operation atomic
@@ -58,7 +84,6 @@ static if(is(T == void)) {
 	 */
 	void succeeded() {
 		if (cas(&_isCompleting, false, true)) {
-			// _cause = COMPLETED;
 			onCompleted();
 		} else {
 			warningf("This promise has been done, and can't be set again. cause: %s", 
@@ -67,6 +92,32 @@ static if(is(T == void)) {
 	}
 
 } else {
+	ThenHandler!(T) _thenSucceededHandler;
+
+	FuturePromise!R then(R)(R delegate(T) handler) {
+		FuturePromise!R result = new FuturePromise!(R);
+		_thenSucceededHandler = (T t) {
+			try {
+				static if(is(R == void)) {
+					handler(t);
+					result.succeeded();
+				} else {
+					R r = handler(t);
+					result.succeeded(r);
+				}
+			} catch(Exception ex) {
+				Exception e = new Exception("then exception", ex);
+				result.failed(e);
+			}
+		};
+
+		_thenFailedHandler = (Exception ex) {
+			Exception e = new Exception("then exception", ex);
+			result.failed(e);
+		};
+
+		return result;
+	}
 
 	/**
 	 * TODO: 
@@ -117,7 +168,22 @@ static if(is(T == void)) {
 		scope(exit) {
 			_waiterLocker.unlock();
 		}
+		
 		_waiterCondition.notifyAll();
+
+		if(_cause is null) {
+			if(_thenSucceededHandler !is null) {
+				static if(is(T == void)) {
+					_thenSucceededHandler();
+				} else {
+					_thenSucceededHandler(_result);
+				}
+			}
+		} else {
+			if(_thenFailedHandler !is null) {
+				_thenFailedHandler(_cause);
+			}
+		}
 	}
 
 	bool isCancelled() {
