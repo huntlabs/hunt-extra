@@ -26,12 +26,13 @@ import std.format;
 import std.datetime;
 
 alias ThenHandler(T) = void delegate(T);
-alias VoidHandler = void delegate();
 
 /**
  * 
  */
 class FuturePromise(T) : Future!T, Promise!T {
+	alias VoidHandler = void delegate();
+	
 	private shared bool _isCompleting = false;
 	private bool _isCompleted = false;
 	private Exception _cause;
