@@ -143,7 +143,6 @@ struct Argument
      * default, this is 1.
      */
     this(string name, size_t count = 1) pure nothrow
-    body
     {
         this.name = name;
         this.lowerBound = count;
@@ -155,9 +154,8 @@ struct Argument
      * for how many argument elements should be consumed from the command line.
      */
     this(string name, size_t lowerBound, size_t upperBound) pure nothrow
-    in { assert(lowerBound < upperBound); }
-    body
     {
+        assert(lowerBound < upperBound);
         this.name = name;
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
