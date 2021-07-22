@@ -17,7 +17,7 @@ import hunt.util.Common;
 import std.range;
 
 
-interface Collection(E) : Iterable!E, IObject {
+interface Collection(E) : IObject, Iterable!E {
     // Query Operations
 
     /**
