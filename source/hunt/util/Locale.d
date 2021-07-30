@@ -628,9 +628,9 @@ final class Locale // : Cloneable
          * PART1_ALPHA2 is used to represent the ISO3166-1 alpha-2 two letter
          * country codes.
          */
-        static IsoCountryCode PART1_ALPHA2;
+        __gshared IsoCountryCode PART1_ALPHA2;
 
-        static this()
+        shared static this()
         {
             PART1_ALPHA2 = new class IsoCountryCode
             {
@@ -667,12 +667,12 @@ final class Locale // : Cloneable
          * PART1_ALPHA3 is used to represent the ISO3166-1 alpha-3 three letter
          * country codes.
          */
-        static IsoCountryCode PART1_ALPHA3;
+        __gshared IsoCountryCode PART1_ALPHA3;
 
         /**
          * PART3 is used to represent the ISO3166-3 four letter country codes.
          */
-        static IsoCountryCode PART3;
+        __gshared IsoCountryCode PART3;
 
         /**
          * Concrete implementation of this method attempts to compute value
@@ -683,9 +683,9 @@ final class Locale // : Cloneable
         /**
          * Map to hold country codes for each ISO3166 part.
          */
-        private static Map!(IsoCountryCode, Set!(string)) iso3166CodesMap;
+        private __gshared Map!(IsoCountryCode, Set!(string)) iso3166CodesMap;
 
-        static this()
+        shared static this()
         {
             iso3166CodesMap = new HashMap!(IsoCountryCode, Set!(string))();
         }
