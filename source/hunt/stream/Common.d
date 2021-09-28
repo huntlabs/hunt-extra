@@ -516,6 +516,6 @@ abstract class OutputStream : Closeable, Flushable {
 // }
 
 
-interface BufferReaderHandler {
-	void readBuffer(ByteBuffer buf, CountingCallback countingCallback, long count);
-}
+// interface BufferReaderHandler {
+// 	void readBuffer(ByteBuffer buf, CountingCallback countingCallback, long count);
+// }

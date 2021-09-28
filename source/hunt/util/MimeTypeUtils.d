@@ -150,9 +150,6 @@ class MimeTypeUtils {
         }
 
         doLoad();
-        // import std.parallelism;
-        // auto t = task(&doLoad);
-        // t.executeInNewThread();
     }
 
     private static void loadEncodingProperties(string fileName) {
