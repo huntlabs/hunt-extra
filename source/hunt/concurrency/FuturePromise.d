@@ -35,12 +35,13 @@ class FuturePromise(T) : Future!T, Promise!T {
 	
 	private shared bool _isCompleting = false;
 	private bool _isCompleted = false;
-	private Exception _cause;
+	private Throwable _cause;
 	private string _id;
 	private Mutex _waiterLocker;
 	private Condition _waiterCondition;
 
-	this() {
+	this(string id="") {
+		_id = id;
 		_waiterLocker = new Mutex(this);
 		_waiterCondition = new Condition(_waiterLocker);
 	}
@@ -49,11 +50,11 @@ class FuturePromise(T) : Future!T, Promise!T {
 		return _id;
 	}
 
-	void id(string id) {
-		_id = id;
-	}
+	// void id(string id) {
+	// 	_id = id;
+	// }
 
-	ThenHandler!(Exception) _thenFailedHandler;
+	ThenHandler!(Throwable) _thenFailedHandler;
 
 static if(is(T == void)) {
 	VoidHandler _thenSucceededHandler;
@@ -112,7 +113,7 @@ static if(is(T == void)) {
 			}
 		};
 
-		_thenFailedHandler = (Exception ex) {
+		_thenFailedHandler = (Throwable ex) {
 			Exception e = new Exception("then exception", ex);
 			result.failed(e);
 		};
@@ -130,7 +131,7 @@ static if(is(T == void)) {
 			_result = result;
 			onCompleted();
 		} else {
-			warning("This promise has been done, and can't be set again.");
+			warningf("The promise [%s] has done, and can't be set again.", id());
 		}
 	}
 	private T _result;
@@ -141,13 +142,13 @@ static if(is(T == void)) {
 	 * 	1) keep this operation atomic
 	 * 	2) return a flag to indicate whether this option is successful.
 	 */
-	void failed(Exception cause) {
+	void failed(Throwable cause) {
 		if (cas(&_isCompleting, false, true)) {
 			_cause = cause;	
 			onCompleted();		
 		} else {
-			warningf("This promise has been done, and can't be set again. cause: %s", 
-				typeid(_cause));
+			warningf("This promise [%s] has been done, and can't be set again. cause: %s", 
+				id(), (cause is null) ? "null" : typeid(cause).toString());
 		}
 	}
 
@@ -164,11 +165,14 @@ static if(is(T == void)) {
 	}
 
 	private void onCompleted() {
+
+		version(HUNT_DEBUG_MORE) tracef("Promise [%s] completed", id());
+
 		_waiterLocker.lock();
-		_isCompleted = true;
 		scope(exit) {
 			_waiterLocker.unlock();
 		}
+		_isCompleted = true;
 		
 		_waiterCondition.notifyAll();
 
@@ -218,26 +222,27 @@ static if(is(T == void)) {
 			}
 
 			if(timeout.isNegative()) {
-				version (HUNT_DEBUG) info("Waiting for a promise...");
+				version (HUNT_DEBUG) info("Waiting for promise [%s]...", id());
 				_waiterCondition.wait();
 			} else {
 				version (HUNT_DEBUG) {
-					infof("Waiting for a promise in %s...", timeout);
+					infof("Waiting for promise [%s] in %s...", id(), timeout);
 				}
 				bool r = _waiterCondition.wait(timeout);
 				if(!r) {
-					debug warningf("Timeout for a promise in %s...", timeout);
+					debug warningf("Timeout for promise [%s] in %s...", id(), timeout);
 					if (cas(&_isCompleting, false, true)) {
 						_isCompleted = true;
-						_cause = new TimeoutException("Timeout in " ~ timeout.toString());
+						string str = format("Promise [%s] timeout in %s", id(), timeout);
+						_cause = new TimeoutException(str);
 					}
 				}
 			}
 			
 			if(_cause is null) {
-				version (HUNT_DEBUG) infof("Got a succeeded promise.");
+				version (HUNT_DEBUG) infof("Got a succeeded promise [%s].", id());
 			} else {
-				version (HUNT_DEBUG) warningf("Got a failed promise: %s", typeid(_cause));
+				version (HUNT_DEBUG) warningf("Got a failed promise [%s]: %s", id(), typeid(_cause));
 			}
 		} 
 
@@ -256,7 +261,7 @@ static if(is(T == void)) {
 			throw c;
 		}
 		
-		debug warning("Get a exception in a promise: ", _cause.msg);
+		debug warningf("Get a exception in promise %s: %s", id(), _cause.msg);
 		version (HUNT_DEBUG) warning(_cause);
 		throw new ExecutionException(_cause);
 	}	

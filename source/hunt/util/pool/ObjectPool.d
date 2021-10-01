@@ -28,6 +28,7 @@ enum CreationMode {
  */
 class PoolOptions {
     size_t size = 5;
+    string name;
     CreationMode creationMode = CreationMode.Lazy;
 }
 
@@ -43,7 +44,11 @@ class ObjectPool(T) {
     private PoolOptions _poolOptions;
 
     this(PoolOptions options) {
-        this(new DefaultObjectFactory!(T)(), options);
+        static if(is(T == class)) {
+            this(new DefaultObjectFactory!(T)(), options);
+        } else {
+            this(null, options);
+        }
     }
 
     this(ObjectFactory!(T) factory, PoolOptions options) {
@@ -105,14 +110,16 @@ class ObjectPool(T) {
             _locker.unlock();
         }
         
-        FuturePromise!T promise = new FuturePromise!T();
+        import std.conv;
+        _waiterCount++;
+        FuturePromise!T promise = new FuturePromise!T("PoolWaiter " ~ _waiterCount.to!string());
 
         if(_waiters.empty()) {
             T r = doBorrow();
             if(r is null) {
                 _waiters.stableInsert(promise);
                 version(HUNT_DEBUG) {
-                    warningf("New waiter...%d", getNumWaiters());
+                    warningf("Pool: %s, new waiter...%d", _poolOptions.name, getNumWaiters());
                 }
             } else {
                 promise.succeeded(r);
@@ -120,12 +127,14 @@ class ObjectPool(T) {
         } else {
             _waiters.stableInsert(promise);
             version(HUNT_DEBUG) {
-                warningf("New waiter...%d", getNumWaiters());
+                warningf("Pool: %s, new waiter...%d", _poolOptions.name, getNumWaiters());
             }
         }
 
         return promise;
     }
+
+    private int _waiterCount;
 
     /**
      * 
@@ -172,7 +181,7 @@ class ObjectPool(T) {
         
         if(pooledObj is null) {
             version(HUNT_DEBUG) {
-                warning("No idle object avaliable.");
+                warning("Pool: %s. No idle object avaliable.",  _poolOptions.name);
             }
             return null;
         }
@@ -223,7 +232,7 @@ class ObjectPool(T) {
             T underlyingObj = pooledObj.getObject();
             if(underlyingObj is obj) {
                 version(HUNT_DEBUG_MORE) {
-                    tracef("returning: id=%d, state=%s, count=%s, createTime=%s", 
+                    tracef("Pool: %s, returning: id=%d, state=%s, count=%s, createTime=%s", _poolOptions.name, 
                         pooledObj.id, pooledObj.state(), pooledObj.borrowedCount(), pooledObj.createTime()); 
                 }
                     
@@ -231,9 +240,9 @@ class ObjectPool(T) {
                 result = pooledObj.deallocate();
                 version(HUNT_DEBUG) {
                     if(result) {
-                        infof("Returned: id=%d", pooledObj.id);
+                        infof("Pool: %s, Returned: id=%d", _poolOptions.name, pooledObj.id);
                     } else {
-                        warningf("Return failed: id=%d", pooledObj.id);
+                        warningf("Pool: %s, Return failed: id=%d", _poolOptions.name, pooledObj.id);
                     }
                 }
                 break;
@@ -368,11 +377,14 @@ class ObjectPool(T) {
      */
     void close() {
         version(HUNT_DEBUG) {
-            info("Pool is closing...");
+            infof("Pool %s is closing...", _poolOptions.name);
         }
 
         _locker.lock();
-        scope(exit) {
+            scope(exit) {
+            version(HUNT_DEBUG) {
+                infof("Pool %s closed...", _poolOptions.name);
+            }
             _locker.unlock();
         }
 
@@ -381,7 +393,7 @@ class ObjectPool(T) {
 
             if(obj !is null) {
                 version(HUNT_DEBUG) {
-                    tracef("destroying object: id=%d, slot=%d", obj.id, index);
+                    tracef("Pool: %s, destroying object: id=%d, slot=%d", _poolOptions.name,  obj.id, index);
                 }
 
                 _pooledObjects[index] = null;
@@ -393,8 +405,8 @@ class ObjectPool(T) {
     }
 
     override string toString() {
-        string str = format("Total: %d, Active: %d, Idle: %d, Waiters: %d", 
-                size(), getNumActive(),  getNumIdle(), getNumWaiters());
+        string str = format("Name: %s, Total: %d, Active: %d, Idle: %d, Waiters: %d", 
+                _poolOptions.name, size(), getNumActive(),  getNumIdle(), getNumWaiters());
         return str;
     }
 }

@@ -39,7 +39,7 @@ interface Promise(T) {
      *
      * @param x the reason for the operation failure
      */
-    void failed(Exception x);
+    void failed(Throwable x);
 }
 
 /**
@@ -59,6 +59,6 @@ class DefaultPromise(T) : Promise!T {
         }
     }
 
-    void failed(Exception x) {
+    void failed(Throwable x) {
     }
 }
