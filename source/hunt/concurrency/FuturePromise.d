@@ -71,7 +71,7 @@ static if(is(T == void)) {
 			}
 		};
 
-		_thenFailedHandler = (Exception ex) {
+		_thenFailedHandler = (Throwable ex) {
 			Exception e = new Exception("then exception", ex);
 			result.failed(e);
 		};

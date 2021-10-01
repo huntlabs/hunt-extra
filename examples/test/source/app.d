@@ -10,10 +10,7 @@ import hunt.util.UnitTest;
 import test.AtomicTest;
 import test.BigIntegerTest;
 import test.ByteBufferTest;
-import test.CompletableFutureTest;
-import test.CompletableFutureTest2;
 import test.DeductionTest;
-import test.ForkJoinPoolTest;
 import test.JsonSerializerTest;
 import test.LocaleTest;
 import test.LinkedBlockingQueueTest;
@@ -64,11 +61,6 @@ void main()
     // testUnits!(AtomicTest);
     // testUnits!(BigIntegerTest);
 
-    // testUnits!(CompletableFutureTest);
-    // testUnits!(CompletableFutureTest2);
-    // testUnits!(RealLifeCompletableFutureExample);
-    // testUnits!(RealLifeCompletableFutureExample2);
-    // testUnits!(ForkJoinPoolTest);
 
     // testUnits!(LocaleTest);
     // testUnits!(LinkedBlockingQueueTest);
@@ -79,7 +71,7 @@ void main()
     // // 
     // // testUnits!(PathMatcherTest); 
     // testUnits!(StringTokenizerTest);
-    // testUnits!(ThreadTest);
+    testUnits!(ThreadTest);
 
     // // These tests belown will block the test procession.
 
@@ -100,7 +92,7 @@ void main()
     // testUnits!(ByteBufferTest);
 
     
-    testUnits!(PromiseTest);
+    // testUnits!(PromiseTest);
 
 }
 
