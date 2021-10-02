@@ -5,10 +5,11 @@ import hunt.concurrency.Promise;
 import hunt.concurrency.FuturePromise;
 import hunt.logging.ConsoleLogger;
 
+import core.atomic;
 import core.sync.mutex;
+import core.time;
 
 import std.container.dlist;
-import core.time;
 import std.format;
 import std.range : walkLength;
 
@@ -33,22 +34,29 @@ class PoolOptions {
 }
 
 
+enum ObjectPoolState {
+    Open,
+    Closing,
+    Closed
+}
+
 /**
  * 
  */
 class ObjectPool(T) {
+
+    private shared ObjectPoolState _state = ObjectPoolState.Open;
+    private shared bool _isClearing = false;
     private ObjectFactory!(T) _factory;
     private PooledObject!(T)[] _pooledObjects;
     private Mutex _locker;
     private DList!(FuturePromise!T) _waiters;
     private PoolOptions _poolOptions;
 
-    this(PoolOptions options) {
-        static if(is(T == class)) {
+    static if(is(T == class) && __traits(compiles, new T())) {
+        this(PoolOptions options) {
             this(new DefaultObjectFactory!(T)(), options);
-        } else {
-            this(null, options);
-        }
+        } 
     }
 
     this(ObjectFactory!(T) factory, PoolOptions options) {
@@ -56,6 +64,10 @@ class ObjectPool(T) {
         _poolOptions = options;
         _pooledObjects = new PooledObject!(T)[options.size];
         _locker = new Mutex();
+    }
+
+    ObjectPoolState state() {
+        return _state;
     }
 
     size_t size() {
@@ -111,8 +123,8 @@ class ObjectPool(T) {
         }
         
         import std.conv;
-        _waiterCount++;
-        FuturePromise!T promise = new FuturePromise!T("PoolWaiter " ~ _waiterCount.to!string());
+        FuturePromise!T promise = new FuturePromise!T("PoolWaiter " ~ _waiterNumber.to!string());
+        _waiterNumber++;
 
         if(_waiters.empty()) {
             T r = doBorrow();
@@ -134,7 +146,7 @@ class ObjectPool(T) {
         return promise;
     }
 
-    private int _waiterCount;
+    private int _waiterNumber = 0;
 
     /**
      * 
@@ -181,7 +193,7 @@ class ObjectPool(T) {
         
         if(pooledObj is null) {
             version(HUNT_DEBUG) {
-                warning("Pool: %s. No idle object avaliable.",  _poolOptions.name);
+                warningf("Failed to borrow. pool status = { %s }",  toString());
             }
             return null;
         }
@@ -203,20 +215,11 @@ class ObjectPool(T) {
      * @param obj a {@link #borrowObject borrowed} instance to be returned.
      */
     void returnObject(T obj) {
-        if(obj is null) {
-            version(HUNT_DEBUG) warning("Do nothing for a null object");
-            return;
+        if(obj !is null) {
+            doReturning(obj);
         }
 
-        scope(exit) {
-            _locker.lock();
-            scope(exit) {
-                _locker.unlock();
-            }
-            handleWaiters();
-        }
-
-        doReturning(obj);
+        handleWaiters();
     } 
 
     private bool doReturning(T obj) {
@@ -256,9 +259,29 @@ class ObjectPool(T) {
     }
 
     private void handleWaiters() {
-        if(_waiters.empty())
+
+        if(_state != ObjectPoolState.Open) {
+            warningf("Failed to query the waiters. The state is %s", _state);
             return;
+        }
+  
+        if(_waiters.empty()) {
+            version(HUNT_DEBUG_MORE) warning("no waiter avaliable");
+            return;
+        }
+
+        bool  lockResult = _locker.tryLock_nothrow();
         
+        if(!lockResult) {
+            warningf("Waiter-lock failed. The state is %s", _state);
+        }
+
+        scope(exit) {
+            if(lockResult) {
+                _locker.unlock();
+            }
+        }
+
         FuturePromise!T waiter = _waiters.front();
 
         // clear up all the finished waiter
@@ -342,12 +365,19 @@ class ObjectPool(T) {
      */
     void clear() {
         version(HUNT_DEBUG) {
-            info("Pool is clearing...");
+            infof("Pool [%s] is clearing...", _poolOptions.name);
+        }
+
+        bool r = cas(&_isClearing, false, true);
+        if(!r) {
+            return;
         }
 
         _locker.lock();
         scope(exit) {
-            _locker.unlock();
+            _isClearing = false;
+            version(HUNT_DEBUG) infof("Pool [%s] is cleared...", _poolOptions.name);
+            _locker.unlock();        
         }
 
         for(size_t index; index<_pooledObjects.length; index++) {
@@ -360,6 +390,8 @@ class ObjectPool(T) {
 
                 _pooledObjects[index] = null;
                 obj.abandoned();
+
+                // TODO: It's better to run it asynchronously
                 _factory.destroyObject(obj.getObject());
             }
         }
@@ -377,15 +409,21 @@ class ObjectPool(T) {
      */
     void close() {
         version(HUNT_DEBUG) {
-            infof("Pool %s is closing...", _poolOptions.name);
+            infof("Closing pool %s (state=%s)...", _poolOptions.name, _state);
         }
 
-        _locker.lock();
-            scope(exit) {
+        bool r = cas(&_state, ObjectPoolState.Open, ObjectPoolState.Closing);
+        if(!r) {
+            return;
+        }
+
+        // _locker.lock();
+        scope(exit) {
+            _state = ObjectPoolState.Closed;
             version(HUNT_DEBUG) {
                 infof("Pool %s closed...", _poolOptions.name);
             }
-            _locker.unlock();
+            // _locker.unlock();
         }
 
         for(size_t index; index<_pooledObjects.length; index++) {
@@ -398,6 +436,8 @@ class ObjectPool(T) {
 
                 _pooledObjects[index] = null;
                 obj.abandoned();
+
+                // TODO: It's better to run it asynchronously
                 _factory.destroyObject(obj.getObject());
             }
         }
