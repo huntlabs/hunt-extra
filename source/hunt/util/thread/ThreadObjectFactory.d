@@ -30,7 +30,7 @@ class ThreadObjectFactory : ObjectFactory!(PooledThread) {
 
     override PooledThread makeObject() {
         int id = atomicOp!("+=")(idCounter, 1) - 1;
-        warningf("making thread %d", id);
+        version(HUNT_POOL_DEBUG) tracef("making thread %d", id);
         PooledThread r = new PooledThread(id, _options.timeout);
         r.start();
 
@@ -38,10 +38,10 @@ class ThreadObjectFactory : ObjectFactory!(PooledThread) {
     }    
 
     override void destroyObject(PooledThread p) {
-        tracef("thread %s destroying", p.name);
+        version(HUNT_POOL_DEBUG) tracef("thread %s destroying", p.name);
         p.stop();
         p.join();
-        tracef("thread %s destroyed", p.name);
+        version(HUNT_POOL_DEBUG) tracef("thread %s destroyed", p.name);
     }
 
     override bool isValid(PooledThread p) {

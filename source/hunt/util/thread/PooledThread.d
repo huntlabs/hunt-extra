@@ -9,7 +9,9 @@ import core.atomic;
 import core.thread;
 import core.sync.condition;
 import core.sync.mutex;
+
 import std.conv;
+import std.format;
 
 
 enum PooledThreadState {
@@ -17,6 +19,8 @@ enum PooledThreadState {
     Busy, // occupied
     Stopped
 }
+
+alias PooledThreadHandler = Action2!(PooledThread, Task);
 
 /** 
  * 
@@ -31,7 +35,7 @@ class PooledThread : Thread {
     private Condition _condition;
     private Mutex _mutex;
 
-    private Action1!Task _taskDoneHandler;
+    private PooledThreadHandler _taskDoneHandler;
 
     this(size_t index, Duration timeout = 5.seconds, size_t stackSize = 0) {
         _index = index;
@@ -43,18 +47,18 @@ class PooledThread : Thread {
         super(&run, stackSize);
     }
 
-    void onTaskDone(Action1!Task handler) {
+    void onTaskDone(PooledThreadHandler handler) {
         _taskDoneHandler = handler;
     }
 
     void stop() {
-        version(HUNT_DEBUG_MORE) {
+        version(HUNT_POOL_DEBUG_MORE) {
             infof("Stopping thread %s", this.name);
         }
 
         _mutex.lock();
         scope (exit) {
-            version(HUNT_DEBUG_MORE) {
+            version(HUNT_POOL_DEBUG_MORE) {
                 infof("thread [%s] stopped", this.name);
             }
             _mutex.unlock();
@@ -85,22 +89,27 @@ class PooledThread : Thread {
 
     bool attatch(Task task) {
         assert(task !is null);
+        version(HUNT_POOL_DEBUG_MORE) {
+            tracef("attatching task %s with thread %s (state: %s)", task.name, this.name, _state);
+        }
+
         bool r = cas(&_state, PooledThreadState.Idle, PooledThreadState.Busy);
 
         if (r) {
-            version(HUNT_DEBUG_MORE) {
-                infof("attatching task %s with thread %s", task.name, this.name);
-            }
-
             _mutex.lock();
             scope (exit) {
+                version(HUNT_POOL_DEBUG) {
+                    infof("task [%s] attatched with thread %s", task.name, this.name);
+                }
                 _mutex.unlock();
             }
             _task = task;
             _condition.notify();
             
         } else {
-            warningf("%s is unavailable. state: %s", this.name(), _state);
+            string msg = format("Thread [%s] is unavailable. state: %s", this.name(), _state);
+            warningf(msg);
+            throw new Exception(msg);
         }
 
         return r;
@@ -115,32 +124,35 @@ class PooledThread : Thread {
                 warning(ex);
             } 
 
-            version (HUNT_DEBUG_MORE) {
+            version (HUNT_POOL_DEBUG_MORE) {
                 tracef("%s Done. state: %s", this.name(), _state);
             }
 
             Task task = _task;
-            _task = null;
-
             if(_state != PooledThreadState.Stopped) {
                 bool r = cas(&_state, PooledThreadState.Busy, PooledThreadState.Idle);
-                version(HUNT_DEBUG_MORE) {
+                version(HUNT_POOL_DEBUG_MORE) {
                     if(!r) {
                         warningf("Failed to set thread %s to Idle, its state is %s", this.name, _state);
                     }
                 }
             }
 
+            version(HUNT_POOL_DEBUG_MORE) tracef("Run done: %s", this.toString());
+            _task = null;
+
             if(_taskDoneHandler !is null && task !is null) {
                 try {
-                    _taskDoneHandler(task);
+                    _taskDoneHandler(this, task);
                 } catch(Throwable t) {
                     warning(t);
                 }
             }
         }
         
-        version (HUNT_DEBUG) tracef("Thread [%s] stopped. State: %s", this.name(), _state);
+        version (HUNT_POOL_DEBUG) {
+            tracef("Thread [%s] stopped. State: %s", this.name(), _state);
+        }
     }
 
     private bool _isWaiting = false;
@@ -153,7 +165,7 @@ class PooledThread : Thread {
             bool r = _condition.wait(_timeout);
             task = _task;
 
-            version(HUNT_DEBUG_MORE) {
+            version(HUNT_POOL_DEBUG_MORE) {
                 if(!r && _state == PooledThreadState.Busy) {
                     if(task is null) {
                         warningf("No task attatched on a busy thread %s in %s, task: %s", this.name, _timeout);
@@ -167,10 +179,22 @@ class PooledThread : Thread {
         _mutex.unlock();
 
         if(task !is null) {
-            version(HUNT_DEBUG_MORE) {
-                tracef("Try to exeucte task %s in thread %s, its status: %s", task.name, this.name, task.status);
+            version(HUNT_POOL_DEBUG) {
+                tracef("Try to exeucte task [%s] in thread %s. task: %s", task.name, this.name, task.status);
             }
             task.execute();
         }
+    }
+    
+    override string toString() {
+        import std.format;
+        string r = format("name: %s, state: %s", name, _state);
+        Task task = _task;
+        if(task !is null) {
+            return r ~ ", task: " ~ task.toString();
+        } else {
+            return r;
+        }
+        
     }
 }

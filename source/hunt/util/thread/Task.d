@@ -75,34 +75,33 @@ abstract class Task {
 
     void stop() {
         
-        version(HUNT_DEBUG_MORE) {
+        version(HUNT_POOL_DEBUG_MORE) {
             tracef("The task status: %s", _status);
         }
 
         if(!cas(&_status, TaskStatus.Processing, TaskStatus.Terminated) && 
             !cas(&_status, TaskStatus.Ready, TaskStatus.Terminated)) {
-            version(HUNT_DEBUG_MORE) {
-                warningf("The task status: %s", _status);
+            version(HUNT_POOL_DEBUG) {
+                warningf("The task [%s] stopped. The status is %s",  _name, _status);
             }
         }
     }
 
     void finish() {
-        version(HUNT_DEBUG_MORE) {
-            tracef("The task [%s] status: %s", _name, _status);
+        version(HUNT_POOL_DEBUG_MORE) {
+            tracef("The status of task [%s]: %s", _name, _status);
         }
 
         if(cas(&_status, TaskStatus.Processing, TaskStatus.Done) || 
             cas(&_status, TaskStatus.Ready, TaskStatus.Done)) {
                 
             _endTime = MonoTime.currTime;
-            version(HUNT_DEBUG_MORE) {
+            version(HUNT_POOL_DEBUG) {
                 infof("The task [%s] done.", _name);
             }
         } else {
-            version(HUNT_DEBUG_MORE) {
-                warningf("The task [%s] status is %s", _name, _status);
-                warningf("Failed to set the task status to Done: %s", _status);
+            version(HUNT_POOL_DEBUG) {
+                warningf("Failed to set the status of task [%s] to Done: %s", _name, _status);
             }
         }
     }
@@ -111,17 +110,25 @@ abstract class Task {
 
     void execute() {
         if(cas(&_status, TaskStatus.Ready, TaskStatus.Processing)) {
-            version(HUNT_DEBUG_MORE) {
+            version(HUNT_POOL_DEBUG_MORE) {
                 tracef("Task %s executing... status: %s", _name, _status);
             }
             _startTime = MonoTime.currTime;
             scope(exit) {
                 finish();
-                version(HUNT_DEBUG_MORE) {
-                    infof("Task [%s] Done!", _name);
+                version(HUNT_POOL_DEBUG_MORE) {
+                    infof("The task [%s] is done!", _name);
                 }
             }
-            doExecute();
+
+            try {
+                doExecute();
+            } catch(Throwable t) {
+                warningf("task [%s] failed: %s", _name, t.msg);
+                version(HUNT_POOL_DEBUG_MORE) {
+                    warning(t);
+                }
+            }
         } else {
             warningf("Failed to execute task [%s]. Its status is: %s", _name, _status);
         }
