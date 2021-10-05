@@ -30,16 +30,16 @@ interface Promise(T) {
      * @see #failed(Throwable)
      */
     static if (is(T == void)) {
-        void succeeded();
+        bool succeeded();
     } else {
-        void succeeded(T result);
+        bool succeeded(T result);
     }
     /**
      * <p>Callback invoked when the operation fails.</p>
      *
      * @param x the reason for the operation failure
      */
-    void failed(Throwable x);
+    bool failed(Throwable x);
 }
 
 /**

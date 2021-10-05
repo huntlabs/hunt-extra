@@ -22,6 +22,7 @@ import core.thread;
 import core.sync.mutex;
 import core.sync.condition;
 
+import std.conv;
 import std.format;
 import std.datetime;
 
@@ -84,12 +85,14 @@ static if(is(T == void)) {
 	 * 	1) keep this operation atomic
 	 * 	2) return a flag to indicate whether this option is successful.
 	 */
-	void succeeded() {
+	bool succeeded() {
 		if (cas(&_isCompleting, false, true)) {
 			onCompleted();
+			return true;
 		} else {
-			warningf("This promise has been done, and can't be set again. cause: %s", 
-				typeid(_cause));
+			warningf("This promise has completed, and can't be set again. cause: %s", 
+				_cause is null ? "null" : _cause.msg);
+			return false;
 		}
 	}
 
@@ -122,33 +125,36 @@ static if(is(T == void)) {
 	}
 
 	/**
-	 * TODO: 
-	 * 	1) keep this operation atomic
-	 * 	2) return a flag to indicate whether this option is successful.
+	 * 
 	 */
-	void succeeded(T result) {
+	bool succeeded(T result) {
+		version(HUNT_DEBUG_MORE) tracef("completing promise [%s]", id());
+
 		if (cas(&_isCompleting, false, true)) {
 			_result = result;
 			onCompleted();
+			return true;
 		} else {
-			warningf("The promise [%s] has done, and can't be set again.", id());
+			warningf("The promise [%s] has completed, and can't be set again. Result: %s, Cause: %s", id(), 
+				_result.to!string(),  _cause is null ? "null" : _cause.msg);
+			return false;
 		}
 	}
 	private T _result;
 }
 
 	/**
-	 * TODO: 
-	 * 	1) keep this operation atomic
-	 * 	2) return a flag to indicate whether this option is successful.
+	 * 
 	 */
-	void failed(Throwable cause) {
+	bool failed(Throwable cause) {
 		if (cas(&_isCompleting, false, true)) {
 			_cause = cause;	
-			onCompleted();		
+			onCompleted();	
+			return true;	
 		} else {
 			warningf("This promise [%s] has been done, and can't be set again. cause: %s", 
-				id(), (cause is null) ? "null" : typeid(cause).toString());
+				id(), (cause is null) ? "null" : cause.msg);
+			return false;
 		}
 	}
 
@@ -226,23 +232,29 @@ static if(is(T == void)) {
 				_waiterCondition.wait();
 			} else {
 				version (HUNT_DEBUG) {
-					infof("Waiting for promise [%s] in %s...", id(), timeout);
+					tracef("Waiting for promise [%s] in %s...", id(), timeout);
 				}
 				bool r = _waiterCondition.wait(timeout);
 				if(!r) {
-					debug warningf("Timeout for promise [%s] in %s...", id(), timeout);
+					debug warningf("Timeout for promise [%s] in %s...  isCompleting=%s", id(), timeout, _isCompleting);
 					if (cas(&_isCompleting, false, true)) {
 						_isCompleted = true;
 						string str = format("Promise [%s] timeout in %s", id(), timeout);
 						_cause = new TimeoutException(str);
+					} else {
+						static if(is(T == void)) {
+							warningf("It seems that a result has got in promise %s.", id());
+						} else {
+							warningf("It seems that a result has got in promise %s: %s", id(), _result.to!string());
+						}
 					}
 				}
 			}
 			
 			if(_cause is null) {
-				version (HUNT_DEBUG) infof("Got a succeeded promise [%s].", id());
+				version (HUNT_DEBUG) tracef("Got a succeeded promise [%s].", id());
 			} else {
-				version (HUNT_DEBUG) warningf("Got a failed promise [%s]: %s", id(), typeid(_cause));
+				version (HUNT_DEBUG) warningf("Got a failed promise [%s]: %s", id(), _cause.msg);
 			}
 		} 
 
