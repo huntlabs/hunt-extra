@@ -3,6 +3,8 @@ module hunt.util.pool.PooledObject;
 import core.atomic;
 import std.datetime;
 
+import hunt.logging.ConsoleLogger;
+
 import hunt.util.pool.PooledObjectState;
 
 /**
@@ -17,7 +19,7 @@ import hunt.util.pool.PooledObjectState;
 class PooledObject(T) {
     private size_t _id;
     private T _obj;
-    private PooledObjectState _state;
+    private shared PooledObjectState _state;
     private SysTime _createTime;
     private SysTime _lastBorrowTime;
     private SysTime _lastUseTime;
@@ -80,24 +82,15 @@ class PooledObject(T) {
      * @return {@code true} if the original state was {@link PooledObjectState#IDLE IDLE}
      */
     bool allocate() {
-        if (_state == PooledObjectState.IDLE) {
-            _state = PooledObjectState.ALLOCATED;
+        version(HUNT_POOL_DEBUG_MORE) tracef(toString());
+
+        if(cas(&_state, PooledObjectState.IDLE, PooledObjectState.ALLOCATED)) {
             _lastBorrowTime = Clock.currTime;
             _lastUseTime = _lastBorrowTime;
             atomicOp!("+=")(_borrowedCount, 1);
-            // if (logAbandoned) {
-            //     borrowedBy.fillInStackTrace();
-            // }
             return true;
         } 
         
-        // else if (state == PooledObjectState.EVICTION) {
-        //     // TODO Allocate anyway and ignore eviction test
-        //     state = PooledObjectState.EVICTION_RETURN_TO_HEAD;
-        //     return false;
-        // }
-        // TODO if validating and testOnBorrow == true then pre-allocate for
-        // performance
         return false;        
     }
 
@@ -107,16 +100,19 @@ class PooledObject(T) {
      *
      * @return {@code true} if the state was {@link PooledObjectState#ALLOCATED ALLOCATED}
      */
-    bool deallocate() {
+    // bool deallocate() {
+    //     tracef(toString());
+    //     if(cas(&_state, PooledObjectState.ALLOCATED, PooledObjectState.IDLE) || 
+    //         cas(&_state, PooledObjectState.RETURNING, PooledObjectState.IDLE)) {
 
-        if (_state == PooledObjectState.ALLOCATED || _state == PooledObjectState.RETURNING) {
-            _state = PooledObjectState.IDLE;
-            _lastReturnTime = Clock.currTime;
-            return true;
-        }
+    //     // if (_state == PooledObjectState.ALLOCATED || _state == PooledObjectState.RETURNING) {
+    //         // _state = PooledObjectState.IDLE;
+    //         _lastReturnTime = Clock.currTime;
+    //         return true;
+    //     }
 
-        return false;
-    }
+    //     return false;
+    // }
 
     /**
      * Sets the state to {@link PooledObjectState#INVALID INVALID}
@@ -124,7 +120,6 @@ class PooledObject(T) {
     void invalidate() { // synchronized
         _state = PooledObjectState.INVALID;
     }
-
 
     /**
      * Marks the pooled object as abandoned.
@@ -136,8 +131,14 @@ class PooledObject(T) {
     /**
      * Marks the object as returning to the pool.
      */
-    void returning() { // synchronized
-        _state = PooledObjectState.RETURNING;
+    bool returning() { // synchronized
+        version(HUNT_POOL_DEBUG_MORE) tracef(toString());
+        if(cas(&_state, PooledObjectState.ALLOCATED, PooledObjectState.IDLE)) {
+            _lastReturnTime = Clock.currTime;
+            return true;
+        }
+
+        return false;        
     }
 
     bool isIdle() {
@@ -151,4 +152,12 @@ class PooledObject(T) {
     bool isInvalid() {
         return _state == PooledObjectState.INVALID;
     }
+
+    override string toString() {
+        import std.format;
+        string str = format("id: %d, state: %s, binded: {%s}", 
+             id(), _state, _obj is null ? "null" : _obj.toString());
+        return str;
+    }
+    
 }
