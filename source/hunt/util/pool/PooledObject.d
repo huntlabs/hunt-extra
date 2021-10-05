@@ -156,7 +156,7 @@ class PooledObject(T) {
     override string toString() {
         import std.format;
         string str = format("id: %d, state: %s, binded: {%s}", 
-             id(), _state, _obj is null ? "null" : _obj.toString());
+             id(), _state, _obj is null ? "null" : (cast(Object)_obj).toString());
         return str;
     }
     

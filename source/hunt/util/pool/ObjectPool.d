@@ -158,10 +158,10 @@ class ObjectPool(T) {
 
                 if(isSucceeded) {
                     version(HUNT_POOL_DEBUG_MORE) {
-                        tracef("Borrowed a result for promise %s with %s", promise.id(), r.toString());
+                        tracef("Borrowed a result for promise %s with %s", promise.id(), (cast(Object)r).toString());
                     }
                 } else {
-                    warningf("Failed to set the result for promise %s with %s", promise.id(), r.toString());
+                    warningf("Failed to set the result for promise %s with %s", promise.id(), (cast(Object)r).toString());
                     doReturning(r);
                 }
             }
@@ -363,7 +363,7 @@ class ObjectPool(T) {
                 // FIXME: Needing refactor or cleanup -@zhangxueping at 2021-10-03T22:16:01+08:00
                 // 
                 if(!waiter.succeeded(r)) {
-                    warningf("Failed to set the result for promise [%s] with %s", waiter.id(), r.toString());
+                    warningf("Failed to set the result for promise [%s] with %s", waiter.id(), (cast(Object)r).toString());
                     doReturning(r);
                 }
 
