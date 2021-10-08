@@ -95,43 +95,23 @@ class PooledObject(T) {
     }
 
     /**
-     * Deallocates the object and sets it {@link PooledObjectState#IDLE IDLE}
-     * if it is currently {@link PooledObjectState#ALLOCATED ALLOCATED}.
-     *
-     * @return {@code true} if the state was {@link PooledObjectState#ALLOCATED ALLOCATED}
-     */
-    // bool deallocate() {
-    //     tracef(toString());
-    //     if(cas(&_state, PooledObjectState.ALLOCATED, PooledObjectState.IDLE) || 
-    //         cas(&_state, PooledObjectState.RETURNING, PooledObjectState.IDLE)) {
-
-    //     // if (_state == PooledObjectState.ALLOCATED || _state == PooledObjectState.RETURNING) {
-    //         // _state = PooledObjectState.IDLE;
-    //         _lastReturnTime = Clock.currTime;
-    //         return true;
-    //     }
-
-    //     return false;
-    // }
-
-    /**
      * Sets the state to {@link PooledObjectState#INVALID INVALID}
      */
-    void invalidate() { // synchronized
+    void invalidate() {
         _state = PooledObjectState.INVALID;
     }
 
     /**
      * Marks the pooled object as abandoned.
      */
-    void abandoned() { // synchronized
+    void abandoned() {
         _state = PooledObjectState.ABANDONED;
     }
 
     /**
      * Marks the object as returning to the pool.
      */
-    bool returning() { // synchronized
+    bool returning() { 
         version(HUNT_POOL_DEBUG_MORE) tracef(toString());
         if(cas(&_state, PooledObjectState.ALLOCATED, PooledObjectState.IDLE)) {
             _lastReturnTime = Clock.currTime;

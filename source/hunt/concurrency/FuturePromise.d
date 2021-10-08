@@ -236,7 +236,10 @@ static if(is(T == void)) {
 				}
 				bool r = _waiterCondition.wait(timeout);
 				if(!r) {
-					debug warningf("Timeout for promise [%s] in %s...  isCompleting=%s", id(), timeout, _isCompleting);
+					version(HUNT_DEBUG_MORE) {
+						warningf("Timeout for promise [%s] in %s...  isCompleting=%s", id(), timeout, _isCompleting);
+					}
+
 					if (cas(&_isCompleting, false, true)) {
 						_isCompleted = true;
 						string str = format("Promise [%s] timeout in %s", id(), timeout);
@@ -274,7 +277,7 @@ static if(is(T == void)) {
 		}
 		
 		debug warningf("Get a exception in promise %s: %s", id(), _cause.msg);
-		version (HUNT_DEBUG) warning(_cause);
+		// version (HUNT_DEBUG) warning(_cause);
 		throw new ExecutionException(_cause);
 	}	
 

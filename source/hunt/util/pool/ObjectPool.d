@@ -228,20 +228,23 @@ class ObjectPool(T) {
         }
         
         if(pooledObj is null) {
-            version(HUNT_POOL_DEBUG) {
+            version(HUNT_DEBUG) {
                 warningf("Failed to borrow. pool status = {%s}",  toString());
             }
             return null;
         }
         
-        version(HUNT_POOL_DEBUG) tracef("borrowed: slot[%d] => {%s}", index, pooledObj.toString());
+        version(HUNT_POOL_DEBUG) {
+            tracef("borrowed: slot[%d] => {%s}", index, pooledObj.toString());
+        }
 
         bool r = pooledObj.allocate();
         if(r) {
-            version(HUNT_DEBUG) {
+            T result = pooledObj.getObject(); 
+            version(HUNT_POOL_DEBUG) {
                 infof("allocate: %s, borrowed: {%s}", r, pooledObj.toString()); 
             }
-            return pooledObj.getObject();        
+            return result;
         } else {
             warningf("Borrowing collision: slot[%d]", index, pooledObj.toString());
             return null;
@@ -327,49 +330,61 @@ class ObjectPool(T) {
             return;
         }
 
-        FuturePromise!T waiter = _waiters.front();
-
-        // clear up all the finished waiter
-        while(waiter.isDone()) {
-            version(HUNT_DEBUG_MORE) tracef("Waiter %s removed.", waiter.id());
-            _waiters.removeFront();
-            if(_waiters.empty()) {
-                if(lockResult) {
-                    _locker.unlock();
-                }                
-                return;
-            }
-
-            waiter = _waiters.front();
-        }
-        
         if(lockResult) {
             _locker.unlock();
         }
-        version(HUNT_POOL_DEBUG_MORE) {
-            tracef("Borrowing for promise [%s], isDone: %s", waiter.id(), waiter.isDone());
-        }
 
-        // 
-        T r = doBorrow();
-        if(r is null) {
-            warning("No idle object avaliable for waiter");
-        } else {
-            if(!_waiters.empty()) {
+        while(true) {
+            FuturePromise!T waiter = _waiters.front();
+
+            // Clear up all the finished waiter until a awaiting waiter found
+            while(waiter.isDone()) {
+                version(HUNT_DEBUG_MORE) tracef("Waiter %s is done, so removed.", waiter.id());
                 _waiters.removeFront();
-            }
-
-            try {
-                // FIXME: Needing refactor or cleanup -@zhangxueping at 2021-10-03T22:16:01+08:00
-                // 
-                if(!waiter.succeeded(r)) {
-                    warningf("Failed to set the result for promise [%s] with %s", waiter.id(), (cast(Object)r).toString());
-                    doReturning(r);
+                if(_waiters.empty()) {
+                    trace("No awaiting waiter found.");
+                    return;
                 }
 
+                waiter = _waiters.front();
+            } 
+
+            version(HUNT_POOL_DEBUG) {
+                tracef("Borrowing for promise [%s], isDone: %s", waiter.id(), waiter.isDone());
+            }
+            
+            // 
+            T r = doBorrow();
+            if(r is null) {
+                version(HUNT_POOL_DEBUG) warningf("No idle object avaliable for waiter [%s]", waiter.id());
+                break;
+            } 
+
+            //
+            try {
+
+                if(!_waiters.empty()) {
+                    _waiters.removeFront();
+                }
+
+                if(waiter.succeeded(r)) {
+                    version(HUNT_POOL_DEBUG) {
+                        tracef("Borrowed for promise [%s], result: %s", waiter.id(), r.toString());
+                    }                    
+                } else {
+                    warningf("Failed to set the result for promise [%s] with %s", 
+                        waiter.id(), (cast(Object)r).toString());
+
+                    doReturning(r);
+                }
             } catch(Throwable ex) {
                 warning(ex);
                 doReturning(r);
+            }
+
+            if(_waiters.empty()) {
+                trace("No waiter found");
+                break;
             }
         }
     }
