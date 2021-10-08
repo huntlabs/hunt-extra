@@ -31,6 +31,8 @@ enum RequestPerThread = 10;
 enum Duration WaitTimeout = 5.seconds;
 enum Duration TaskTime = 1.seconds;
 
+__gshared bool isExiting = false;
+
 // void main()
 // {
     
@@ -99,15 +101,18 @@ void mutltiThread() {
             } catch(Exception ex) {
                 atomicOp!"+="(failedCounter, 1);
                 warningf("%s => %s", name, ex.msg);
+                tracef("Pool: %s", pool.toString());
             }
+
+            if(isExiting) break;
         }
     }
 
     MonoTime endTime = MonoTime.currTime;
     warningf("Press any key to close pool. Elapsed: %s", endTime - startTime);
     
-
     getchar();
+    isExiting = true;
     warningf("%s", pool.toString());
     pool.close();
     warningf("%s", pool.toString());
