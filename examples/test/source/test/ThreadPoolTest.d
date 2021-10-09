@@ -55,7 +55,6 @@ class ThreadPoolTest {
     }
 }
 
-
 void mutltiThread() {
     import std.parallelism;
 
@@ -68,7 +67,7 @@ void mutltiThread() {
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.size = PoolSize;
     poolOptions.name = "ThreadPool";
-
+    poolOptions.maxWaitQueueSize = 256;
 
     ThreadPool pool = new ThreadPool(factory, poolOptions);
 
@@ -120,6 +119,7 @@ void mutltiThread() {
     infof("Test done. Total: %d, borrowedCounter: %d, succeeded: %d, failed: %d", 
         requestCounter, borrowedCounter, succeededCounter, failedCounter);
 }
+
 
 void singleThread()
 {

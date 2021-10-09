@@ -31,6 +31,7 @@ enum CreationMode {
  */
 class PoolOptions {
     size_t size = 5;
+    int maxWaitQueueSize = -1;
     string name;
     CreationMode creationMode = CreationMode.Lazy;
 }
@@ -47,6 +48,7 @@ enum ObjectPoolState {
  */
 class ObjectPool(T) {
 
+    private PoolOptions _poolOptions;
     private shared ObjectPoolState _state = ObjectPoolState.Open;
     private shared bool _isClearing = false;
     private ObjectFactory!(T) _factory;
@@ -54,7 +56,6 @@ class ObjectPool(T) {
     private Mutex _locker;
     // private Mutex _pooledObjectsLocker;
     private DList!(FuturePromise!T) _waiters;
-    private PoolOptions _poolOptions;
 
     static if(is(T == class) && __traits(compiles, new T())) {
         this(PoolOptions options) {
@@ -169,7 +170,19 @@ class ObjectPool(T) {
             version(HUNT_POOL_DEBUG_MORE) {
                 warningf("Pool: %s, new waiter with %s...%d", _poolOptions.name, promise.id(), getNumWaiters());
             }
-            _waiters.stableInsert(promise);
+
+            size_t number = getNumWaiters();
+            if(_poolOptions.maxWaitQueueSize == -1 || number < _poolOptions.maxWaitQueueSize) {
+                _waiters.stableInsert(promise);
+            } else {
+                string msg = format("Reach to the max WaitNumber (%d), the current: %d", _poolOptions.maxWaitQueueSize, number);
+                version(HUNT_DEBUG) {
+                    warning(msg);
+                }
+                promise.failed(new Exception(msg));
+                
+                // _waiters.stableInsert(promise);
+            }
         }
 
         return promise;
