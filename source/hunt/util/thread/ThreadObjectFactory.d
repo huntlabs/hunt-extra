@@ -12,7 +12,7 @@ import core.time;
 /** 
  * 
  */
-class ObjectFactoryOptions {
+class ThreadPoolOptions {
     Duration timeout = 5.seconds;
 }
 
@@ -22,9 +22,9 @@ class ObjectFactoryOptions {
 class ThreadObjectFactory : ObjectFactory!(PooledThread) {
 
     private shared static int idCounter = 0;
-    private ObjectFactoryOptions _options;
+    private ThreadPoolOptions _options;
 
-    this(ObjectFactoryOptions options) {
+    this(ThreadPoolOptions options) {
         _options = options;
     }
 
