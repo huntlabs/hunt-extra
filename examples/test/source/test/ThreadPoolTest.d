@@ -60,7 +60,7 @@ void mutltiThread() {
 
     MonoTime startTime = MonoTime.currTime;
 
-	ObjectFactoryOptions options = new ObjectFactoryOptions();
+	ThreadPoolOptions options = new ThreadPoolOptions();
     options.timeout = WaitTimeout;
 
     ThreadObjectFactory factory = new ThreadObjectFactory(options);
@@ -123,7 +123,7 @@ void mutltiThread() {
 
 void singleThread()
 {
-	ObjectFactoryOptions options = new ObjectFactoryOptions();
+	ThreadPoolOptions options = new ThreadPoolOptions();
     options.timeout = 5.seconds;
 
     ThreadObjectFactory factory = new ThreadObjectFactory(options);

@@ -8,6 +8,11 @@ module hunt.util.pool.PooledObjectState;
  */
 enum PooledObjectState {
     /**
+     * Not ready (Creating)
+     */
+    UNUSABLE,
+
+    /**
      * In the queue, not in use.
      */
     IDLE,

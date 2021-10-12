@@ -27,11 +27,24 @@ class PooledObject(T) {
     private shared long _borrowedCount = 0;
     private static shared size_t _counter;
 
+    this() {
+        _state = PooledObjectState.UNUSABLE;
+        _createTime = Clock.currTime;
+        _id = atomicOp!("+=")(_counter, 1);
+    }
+
     this(T obj) {
+        assert(obj !is null);
+
         _obj = obj;
         _state = PooledObjectState.IDLE;
         _createTime = Clock.currTime;
         _id = atomicOp!("+=")(_counter, 1);
+    }
+
+    package void bind(T obj) {
+        _obj = obj;
+        _state = PooledObjectState.IDLE;
     }
 
     size_t id() {
@@ -82,14 +95,16 @@ class PooledObject(T) {
      * @return {@code true} if the original state was {@link PooledObjectState#IDLE IDLE}
      */
     bool allocate() {
-        version(HUNT_POOL_DEBUG_MORE) tracef(toString());
+        version(HUNT_POOL_DEBUG) tracef(toString());
 
         if(cas(&_state, PooledObjectState.IDLE, PooledObjectState.ALLOCATED)) {
             _lastBorrowTime = Clock.currTime;
             _lastUseTime = _lastBorrowTime;
             atomicOp!("+=")(_borrowedCount, 1);
             return true;
-        } 
+        } else {
+            version(HUNT_DEBUG) warningf("allocate collision: %s", toString());
+        }
         
         return false;        
     }
@@ -131,6 +146,10 @@ class PooledObject(T) {
 
     bool isInvalid() {
         return _state == PooledObjectState.INVALID;
+    }
+
+    bool isUnusable() {
+        return _state == PooledObjectState.UNUSABLE;
     }
 
     override string toString() {

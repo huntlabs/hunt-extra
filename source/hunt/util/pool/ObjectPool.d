@@ -51,10 +51,12 @@ class ObjectPool(T) {
     private PoolOptions _poolOptions;
     private shared ObjectPoolState _state = ObjectPoolState.Open;
     private shared bool _isClearing = false;
+    private shared int _waiterNumber = 0;
     private ObjectFactory!(T) _factory;
     private PooledObject!(T)[] _pooledObjects;
-    private Mutex _locker;
-    // private Mutex _pooledObjectsLocker;
+    private Mutex _borrowLocker;
+    private Mutex _returnLocker;
+    private Mutex _waitersLocker;
     private DList!(FuturePromise!T) _waiters;
 
     static if(is(T == class) && __traits(compiles, new T())) {
@@ -67,8 +69,9 @@ class ObjectPool(T) {
         _factory = factory;
         _poolOptions = options;
         _pooledObjects = new PooledObject!(T)[options.size];
-        // _pooledObjectsLocker = new Mutex();
-        _locker = new Mutex();
+        _waitersLocker = new Mutex();
+        _borrowLocker = new Mutex();
+        _returnLocker = new Mutex();
     }
 
     ObjectPoolState state() {
@@ -97,11 +100,6 @@ class ObjectPool(T) {
     T borrow(Duration timeout = 10.seconds, bool isQuiet = true) {
         T r;
         if(timeout == Duration.zero) {
-            _locker.lock();
-            scope(exit) {
-                _locker.unlock();
-            }
-
             r = doBorrow();
             if(r is null && !isQuiet) {
                 throw new Exception("No idle object avaliable.");
@@ -119,7 +117,6 @@ class ObjectPool(T) {
             }
         }
         
-
         return r;
     }    
 
@@ -128,112 +125,215 @@ class ObjectPool(T) {
      * 
      */
     Future!T borrowAsync() {
-        // trace("Borrowing...");
-        
-        _locker.lock();
-        scope(exit) {
-            // trace("Borrowing done...");
-            _locker.unlock();
-        }
-        
-        import std.conv;
-        FuturePromise!T promise = new FuturePromise!T("PoolWaiter " ~ _waiterNumber.to!string());
-        _waiterNumber++;
+        version (HUNT_POOL_DEBUG) tracef("Borrowing...%s", toString());
 
-        if(_waiters.empty()) {
-            version (HUNT_POOL_DEBUG_MORE) tracef("Borrowing for promise [%s]", promise.id());
+        int number = atomicOp!("+=")(_waiterNumber, 1) - 1;
+        FuturePromise!T promise = new FuturePromise!T("PoolWaiter " ~ number.to!string());
+        safeInsertWaiter(promise);
+        handleWaiters();
 
-            T r = doBorrow();
-            if(r is null) {
-                version(HUNT_POOL_DEBUG_MORE) {
-                    warningf("Pool: %s, new waiter with %s...%d", _poolOptions.name, promise.id(), getNumWaiters());
-                }
-                _waiters.stableInsert(promise);
-            } else {
-                bool isSucceeded = false;
-                try {
-                    isSucceeded = promise.succeeded(r);
-                } catch(Throwable ex) {
-                    warning(ex);
-                }
+        // if(_waiters.empty()) {
+        //     // version (HUNT_POOL_DEBUG_MORE) 
+        //     tracef("Borrowing for promise [%s]", promise.id());
 
-                if(isSucceeded) {
-                    version(HUNT_POOL_DEBUG_MORE) {
-                        tracef("Borrowed a result for promise %s with %s", promise.id(), (cast(Object)r).toString());
-                    }
-                } else {
-                    warningf("Failed to set the result for promise %s with %s", promise.id(), (cast(Object)r).toString());
-                    doReturning(r);
-                }
-            }
-        } else {
-            version(HUNT_POOL_DEBUG_MORE) {
-                warningf("Pool: %s, new waiter with %s...%d", _poolOptions.name, promise.id(), getNumWaiters());
-            }
+        //     T r = null;
+            
+        //     try {
+        //         r = doBorrow();
+        //     } catch(Exception ex) {
+        //         warning(ex.msg);
+        //         version(HUNT_DEBUG) warning(ex);
+        //         promise.failed(ex);
+        //     }
 
-            size_t number = getNumWaiters();
-            if(_poolOptions.maxWaitQueueSize == -1 || number < _poolOptions.maxWaitQueueSize) {
-                _waiters.stableInsert(promise);
-            } else {
-                string msg = format("Reach to the max WaitNumber (%d), the current: %d", _poolOptions.maxWaitQueueSize, number);
-                version(HUNT_DEBUG) {
-                    warning(msg);
-                }
-                promise.failed(new Exception(msg));
+        //     if(r is null) {
+        //         // version(HUNT_POOL_DEBUG_MORE) 
+        //         {
+        //             warningf("Pool: %s, new waiter with %s...%d", _poolOptions.name, promise.id(), getNumWaiters());
+        //         }
+        //         safeInsertWaiter(promise);
+        //     } else {
+
+        //         // TODO: Tasks pending completion -@zhangxueping at 2021-10-10T16:05:16+08:00
+        //         // Idle > 0
+        //         bool isSucceeded = false;
+        //         try {
+        //             isSucceeded = promise.succeeded(r);
+        //         } catch(Throwable ex) {
+        //             warning(ex);
+        //         }
+
+        //         if(isSucceeded) {
+        //             version(HUNT_POOL_DEBUG) {
+        //                 tracef("Borrowed a result for promise %s with %s", promise.id(), (cast(Object)r).toString());
+        //             }
+        //         } else {
+        //             warningf("Failed to set the result for promise %s with %s", promise.id(), (cast(Object)r).toString());
+        //             doReturning(r);
+        //         }
+        //     }
+        // } else {
+        //     size_t waitNumber = getNumWaiters();
+        //     version(HUNT_POOL_DEBUG) {
+        //         warningf("Pool: %s, new waiter with [%s], current waitNumber: %d", _poolOptions.name, promise.id(), waitNumber);
+        //     }
+
+        //     if(_poolOptions.maxWaitQueueSize == -1 || waitNumber < _poolOptions.maxWaitQueueSize) {
+        //         safeInsertWaiter(promise);
+        //     } else {
+        //         string msg = format("Reach to the max WaitNumber (%d), the current: %d", 
+        //             _poolOptions.maxWaitQueueSize, waitNumber);
+
+        //         version(HUNT_DEBUG) {
+        //             warning(msg);
+        //         }
+        //         promise.failed(new Exception(msg));
                 
-                // _waiters.stableInsert(promise);
-            }
-        }
+        //         // safeInsertWaiter(promise);
+        //     }
+
+        //     handleWaiters();
+        // }
+
 
         return promise;
     }
 
-    private int _waiterNumber = 0;
+    private void safeInsertWaiter(FuturePromise!T promise) {
+        _waitersLocker.lock();
+        scope(exit) {
+            _waitersLocker.unlock();
+        }
+
+        _waiters.stableInsert(promise);
+    }
+
+    private FuturePromise!T safeGetFrontWaiter() {
+        _waitersLocker.lock();
+        scope(exit) {
+            _waitersLocker.unlock();
+        }
+
+        // FIXME: Needing refactor or cleanup -@zhangxueping at 2021-10-10T21:13:56+08:00
+        // More test
+        if(_waiters.empty) return null;
+
+        FuturePromise!T waiter = _waiters.front();
+
+        // Clear up all the finished waiter until a awaiting waiter found
+        while(waiter.isDone()) {
+            // version(HUNT_POOL_DEBUG_MORE) 
+            tracef("Waiter %s is done, so removed.", waiter.id());
+            _waiters.removeFront();
+            
+            if(_waiters.empty()) {
+                version(HUNT_POOL_DEBUG) trace("No awaiting waiter found.");
+                return null;
+            }
+
+            waiter = _waiters.front();
+        } 
+        _waiters.removeFront(); 
+
+        return waiter;       
+    }
+
+    private void safeRemoveFrontWaiter() {
+
+        _waitersLocker.lock();
+        scope(exit) {
+            _waitersLocker.unlock();
+        } 
+
+        _waiters.removeFront();       
+    }
+
 
     /**
      * 
      */
     private T doBorrow() {
-        // _pooledObjectsLocker.lock();
-        // scope(exit) {
-        //     _pooledObjectsLocker.unlock();
-        // }
+    // FIXME: Needing refactor or cleanup -@zhangxueping at 2021-10-10T16:16:24+08:00        
+    // nothrow
+
+        _borrowLocker.lock();
+        bool isUnlocked = false;
+
+        scope(exit) {
+            version(HUNT_POOL_DEBUG_MORE) warningf("isUnlocked: %s...", isUnlocked);
+
+            if(!isUnlocked) {
+                _borrowLocker.unlock();
+            }
+        }
 
         PooledObject!(T) pooledObj;
-        
+        T underlyingObj = null;
+        bool r = false;
         size_t index = 0;
 
         for(; index<_pooledObjects.length; index++) {
             pooledObj = _pooledObjects[index];
 
+            version(HUNT_POOL_DEBUG_MORE) {
+                tracef("Pool: %s, slot[%d] => %s", _poolOptions.name, index, pooledObj.to!string());
+            }
+
             if(pooledObj is null) {
-                T underlyingObj = _factory.makeObject();
-                pooledObj = new PooledObject!(T)(underlyingObj);
-                _pooledObjects[index] = pooledObj;
+                PooledObject!(T) obj = new PooledObject!(T)();
+                _pooledObjects[index] = obj;
+                pooledObj = obj;
+                isUnlocked = true;
+                _borrowLocker.unlock();
+
+                version(HUNT_POOL_DEBUG_MORE) {
+                    tracef("Pool: %s, binding slot[%d] => %s", _poolOptions.name, index, obj.toString());
+                }
+
+                try {
+                    underlyingObj = _factory.makeObject();
+                    _borrowLocker.lock();
+                    obj.bind(underlyingObj);
+                    r = pooledObj.allocate();
+                    isUnlocked = true;
+                    _borrowLocker.unlock();
+                } catch(Throwable t) {
+                    warning(t.msg);
+                    version(HUNT_DEBUG) warning(t);
+                    pooledObj = null;
+                    _pooledObjects[index] = null;
+                }
+                
+                version(HUNT_POOL_DEBUG_MORE) {
+                    tracef("Pool: %s, binded slot[%d] => %s", _poolOptions.name, index,  obj.toString());
+                }
+
                 break;
             } else if(pooledObj.isIdle()) {
-                T underlyingObj = pooledObj.getObject();
+                underlyingObj = pooledObj.getObject();
                 bool isValid = _factory.isValid(underlyingObj);
-                if(!isValid) {
+                if(isValid) {
+                    r = pooledObj.allocate();
+                    isUnlocked = true;
+                    _borrowLocker.unlock();
+                    break;
+                } else {
                     pooledObj.invalidate();
                     version(HUNT_POOL_DEBUG) {
-                        warningf("An invalid object (id=%d) detected at slot %d.", pooledObj.id, index);
+                        warningf("Pool: %s. An invalid object (id=%d) detected at slot %d.", 
+                            _poolOptions.name, pooledObj.id, index);
                     }
-                    _factory.destroyObject(underlyingObj);
-                    underlyingObj = _factory.makeObject();
-                    pooledObj = new PooledObject!(T)(underlyingObj);
-                    _pooledObjects[index] = pooledObj;
                 }
-                break;
             } else if(pooledObj.isInvalid()) {
-                T underlyingObj = pooledObj.getObject();
+                underlyingObj = pooledObj.getObject();
                 version(HUNT_POOL_DEBUG) {
-                    warningf("An invalid object (id=%d) detected at slot %d.", pooledObj.id, index);
+                    warningf("Pool: %s. An invalid object (id=%d) detected at slot %d.", 
+                        _poolOptions.name, pooledObj.id, index);
                 }
+                _pooledObjects[index] = null;
+                isUnlocked = true;
+                _borrowLocker.unlock();
                 _factory.destroyObject(underlyingObj);
-                underlyingObj = _factory.makeObject();
-                pooledObj = new PooledObject!(T)(underlyingObj);
-                _pooledObjects[index] = pooledObj;
                 break;
             }
 
@@ -242,24 +342,22 @@ class ObjectPool(T) {
         
         if(pooledObj is null) {
             version(HUNT_DEBUG) {
-                warningf("Failed to borrow. pool status = {%s}",  toString());
+                warningf("Failed to borrow. pool = {%s}",  toString());
             }
             return null;
         }
         
         version(HUNT_POOL_DEBUG) {
-            tracef("borrowed: slot[%d] => {%s}", index, pooledObj.toString());
+            tracef("Pool: %s, borrowed: slot[%d] => {%s}", _poolOptions.name, index, pooledObj.toString());
         }
 
-        bool r = pooledObj.allocate();
         if(r) {
-            T result = pooledObj.getObject(); 
             version(HUNT_POOL_DEBUG) {
-                infof("allocate: %s, borrowed: {%s}", r, pooledObj.toString()); 
+                infof("Pool: %s, allocate: %s, borrowed: {%s}", _poolOptions.name, r, pooledObj.toString()); 
             }
-            return result;
+            return underlyingObj;
         } else {
-            warningf("Borrowing collision: slot[%d]", index, pooledObj.toString());
+            warningf("Pool: %s, borrowing collision: slot[%d]", _poolOptions.name, index, pooledObj.toString());
             return null;
         }
     }
@@ -303,8 +401,8 @@ class ObjectPool(T) {
                 result = pooledObj.returning();
                 
                 if(result) {
-                    version(HUNT_DEBUG) {
-                        tracef("Pool: %s; slot: %d, Returned: %s", 
+                    version(HUNT_POOL_DEBUG) {
+                        tracef("Pool: %s; slot: %d, Returned: {%s}", 
                             _poolOptions.name, index, pooledObj.toString());
                     }
                 } else {
@@ -321,7 +419,6 @@ class ObjectPool(T) {
     }
 
     private void handleWaiters() {
-
         if(_state == ObjectPoolState.Closing || _state == ObjectPoolState.Closed) {
             return;
         }
@@ -330,59 +427,36 @@ class ObjectPool(T) {
             warningf("Failed to query the waiters. The state is %s.", _state);
             return;
         }
-  
-        if(_waiters.empty()) {
-            version(HUNT_POOL_DEBUG_MORE) warning("No waiter avaliable.");
-            return;
-        }
-
-        bool lockResult = _locker.tryLock_nothrow();
-        
-        if(!lockResult) {
-            warningf("Waiter-lock failed. Busy handling waiter");
-            return;
-        }
-
-        if(lockResult) {
-            _locker.unlock();
-        }
 
         while(true) {
-            FuturePromise!T waiter = _waiters.front();
-
-            // Clear up all the finished waiter until a awaiting waiter found
-            while(waiter.isDone()) {
-                version(HUNT_DEBUG_MORE) tracef("Waiter %s is done, so removed.", waiter.id());
-                _waiters.removeFront();
-                if(_waiters.empty()) {
-                    trace("No awaiting waiter found.");
-                    return;
-                }
-
-                waiter = _waiters.front();
-            } 
-
-            version(HUNT_POOL_DEBUG) {
-                tracef("Borrowing for promise [%s], isDone: %s", waiter.id(), waiter.isDone());
-            }
             
+            if(_waiters.empty()) {
+                version(HUNT_POOL_DEBUG) warning("No waiter avaliable.");
+                break;
+            }
+
             // 
             T r = doBorrow();
             if(r is null) {
-                version(HUNT_POOL_DEBUG) warningf("No idle object avaliable for waiter [%s]", waiter.id());
+                version(HUNT_POOL_DEBUG) warningf("No idle object avaliable");
                 break;
             } 
 
+            FuturePromise!T waiter = safeGetFrontWaiter();
+            if(waiter is null) {
+                doReturning(r);
+                break;
+            }
+
+            version(HUNT_POOL_DEBUG) {
+                tracef("Borrowing for waiter [%s], isDone: %s", waiter.id(), waiter.isDone());
+            }
+
             //
             try {
-
-                if(!_waiters.empty()) {
-                    _waiters.removeFront();
-                }
-
                 if(waiter.succeeded(r)) {
                     version(HUNT_POOL_DEBUG) {
-                        tracef("Borrowed for promise [%s], result: %s", waiter.id(), r.toString());
+                        tracef("Borrowed for waiter [%s], result: %s", waiter.id(), (cast(Object)r).toString());
                     }                    
                 } else {
                     warningf("Failed to set the result for promise [%s] with %s", 
@@ -395,10 +469,11 @@ class ObjectPool(T) {
                 doReturning(r);
             }
 
-            if(_waiters.empty()) {
-                trace("No waiter found");
-                break;
-            }
+            // if(_waiters.empty()) {
+            //     trace("No waiter found");
+            //     break;
+            // }
+
         }
     }
 
@@ -413,12 +488,25 @@ class ObjectPool(T) {
         size_t count = 0;
 
         foreach(PooledObject!(T) obj; _pooledObjects) {
-            if(obj is null || obj.isIdle()) {
+            if(obj !is null && obj.isIdle()) {
                 count++;
             } 
         }
 
         return count;
+    }
+
+    size_t getNumFree() {
+
+        size_t count = 0;
+
+        foreach(PooledObject!(T) obj; _pooledObjects) {
+            if(obj is null || obj.isUnusable() || obj.isInvalid()) {
+                count++;
+            } 
+        }
+
+        return count;        
     }
 
     /**
@@ -467,11 +555,11 @@ class ObjectPool(T) {
             return;
         }
 
-        _locker.lock();
+        _borrowLocker.lock();
         scope(exit) {
             _isClearing = false;
             version(HUNT_POOL_DEBUG) infof("Pool [%s] is cleared...", _poolOptions.name);
-            _locker.unlock();        
+            _borrowLocker.unlock();        
         }
 
         for(size_t index; index<_pooledObjects.length; index++) {
@@ -528,7 +616,7 @@ class ObjectPool(T) {
                         _poolOptions.name,  obj.id, index, obj.state());
 
                     if(obj.state() == PooledObjectState.ALLOCATED) {
-                        warningf("binded obj: %s", obj.getObject().toString());
+                        warningf("binded obj: %s", (cast(Object)obj.getObject()).toString());
                     }
                 }
 
@@ -543,8 +631,8 @@ class ObjectPool(T) {
     }
 
     override string toString() {
-        string str = format("Name: %s, Total: %d, Active: %d, Idle: %d, Waiters: %d", 
-                _poolOptions.name, size(), getNumActive(),  getNumIdle(), getNumWaiters());
+        string str = format("Name: %s, Total: %d, Active: %d, Idle: %d, Free: %d, Waiters: %d", 
+                _poolOptions.name, size(), getNumActive(), getNumIdle(), getNumFree(), getNumWaiters());
         return str;
     }
 }
