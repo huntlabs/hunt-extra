@@ -107,8 +107,14 @@ class ObjectPool(T) {
         } else {
             Future!T future = borrowAsync();
             if(timeout.isNegative()) {
+                version(HUNT_POOL_DEBUG) {
+                    tracef("Borrowing with promise [%s]...", (cast(FuturePromise!T)future).id());
+                }   
                 r = future.get();
             } else {
+                version(HUNT_POOL_DEBUG) {
+                    tracef("Borrowing with promise [%s] in %s", (cast(FuturePromise!T)future).id(), timeout);
+                }                
                 r = future.get(timeout);
             }
 
@@ -125,12 +131,30 @@ class ObjectPool(T) {
      * 
      */
     Future!T borrowAsync() {
-        version (HUNT_POOL_DEBUG) tracef("Borrowing...%s", toString());
+        version (HUNT_POOL_DEBUG) infof("Borrowing...%s", toString());
 
         int number = atomicOp!("+=")(_waiterNumber, 1) - 1;
         FuturePromise!T promise = new FuturePromise!T("PoolWaiter " ~ number.to!string());
-        safeInsertWaiter(promise);
+        size_t waitNumber = getNumWaiters();
+        version(HUNT_POOL_DEBUG_MORE) {
+            tracef("Pool: %s, new waiter [%s], current waitNumber: %d", _poolOptions.name, promise.id(), waitNumber);
+        }      
+
+        if(_poolOptions.maxWaitQueueSize == -1 || waitNumber < _poolOptions.maxWaitQueueSize) {
+            safeInsertWaiter(promise);
+        } else {
+            string msg = format("Reach to the max WaitNumber (%d), the current: %d", 
+                _poolOptions.maxWaitQueueSize, waitNumber);
+
+            version(HUNT_DEBUG) {
+                warning(msg);
+            }
+            promise.failed(new Exception(msg));
+            // safeInsertWaiter(promise);
+        }  
+
         handleWaiters();
+        return promise;
 
         // if(_waiters.empty()) {
         //     // version (HUNT_POOL_DEBUG_MORE) 
@@ -196,7 +220,6 @@ class ObjectPool(T) {
         // }
 
 
-        return promise;
     }
 
     private void safeInsertWaiter(FuturePromise!T promise) {
@@ -222,8 +245,8 @@ class ObjectPool(T) {
 
         // Clear up all the finished waiter until a awaiting waiter found
         while(waiter.isDone()) {
-            // version(HUNT_POOL_DEBUG_MORE) 
-            tracef("Waiter %s is done, so removed.", waiter.id());
+            version(HUNT_POOL_DEBUG_MORE) 
+                tracef("Waiter %s is done, so removed.", waiter.id());
             _waiters.removeFront();
             
             if(_waiters.empty()) {
@@ -292,7 +315,11 @@ class ObjectPool(T) {
 
                 try {
                     underlyingObj = _factory.makeObject();
+
+                    // tracef("Pool: %s, binded slot[%d] locking...", _poolOptions.name, index);
                     _borrowLocker.lock();
+                    // tracef("Pool: %s, binded slot[%d] locked... underlyingObj is null: %s", _poolOptions.name, index, underlyingObj is null);
+                    
                     obj.bind(underlyingObj);
                     r = pooledObj.allocate();
                     isUnlocked = true;
@@ -304,7 +331,7 @@ class ObjectPool(T) {
                     _pooledObjects[index] = null;
                 }
                 
-                version(HUNT_POOL_DEBUG_MORE) {
+                version(HUNT_POOL_DEBUG) {
                     tracef("Pool: %s, binded slot[%d] => %s", _poolOptions.name, index,  obj.toString());
                 }
 
@@ -342,15 +369,11 @@ class ObjectPool(T) {
         
         if(pooledObj is null) {
             version(HUNT_DEBUG) {
-                warningf("Failed to borrow. pool = {%s}",  toString());
+                warningf("Failed to borrow from {%s}",  toString());
             }
             return null;
         }
         
-        version(HUNT_POOL_DEBUG) {
-            tracef("Pool: %s, borrowed: slot[%d] => {%s}", _poolOptions.name, index, pooledObj.toString());
-        }
-
         if(r) {
             version(HUNT_POOL_DEBUG) {
                 infof("Pool: %s, allocate: %s, borrowed: {%s}", _poolOptions.name, r, pooledObj.toString()); 
@@ -418,6 +441,8 @@ class ObjectPool(T) {
         return result;
     }
 
+    // private shared bool _isWaitersHandling = false;
+
     private void handleWaiters() {
         if(_state == ObjectPoolState.Closing || _state == ObjectPoolState.Closed) {
             return;
@@ -428,17 +453,28 @@ class ObjectPool(T) {
             return;
         }
 
+        // bool handingStatus = cas(&_isWaitersHandling, false, true);
+        // if(!handingStatus) {
+        //     version(HUNT_POOL_DEBUG) warningf("Pool: %s is busy with Waiters Handling.", 
+        //         _poolOptions.name);
+        //     return;
+        // }
+
+        // scope(exit) {
+        //     // _isWaitersHandling = false;
+        // }
+
         while(true) {
             
             if(_waiters.empty()) {
-                version(HUNT_POOL_DEBUG) warning("No waiter avaliable.");
+                version(HUNT_POOL_DEBUG) warningf("Pool: %s => No waiter avaliable.", _poolOptions.name);
                 break;
             }
 
             // 
             T r = doBorrow();
             if(r is null) {
-                version(HUNT_POOL_DEBUG) warningf("No idle object avaliable");
+                version(HUNT_POOL_DEBUG) warningf("Pool: %s => No idle object avaliable", _poolOptions.name);
                 break;
             } 
 
@@ -468,12 +504,6 @@ class ObjectPool(T) {
                 warning(ex);
                 doReturning(r);
             }
-
-            // if(_waiters.empty()) {
-            //     trace("No waiter found");
-            //     break;
-            // }
-
         }
     }
 
