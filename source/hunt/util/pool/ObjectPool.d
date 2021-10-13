@@ -55,7 +55,6 @@ class ObjectPool(T) {
     private ObjectFactory!(T) _factory;
     private PooledObject!(T)[] _pooledObjects;
     private Mutex _borrowLocker;
-    private Mutex _returnLocker;
     private Mutex _waitersLocker;
     private DList!(FuturePromise!T) _waiters;
 
@@ -71,7 +70,6 @@ class ObjectPool(T) {
         _pooledObjects = new PooledObject!(T)[options.size];
         _waitersLocker = new Mutex();
         _borrowLocker = new Mutex();
-        _returnLocker = new Mutex();
     }
 
     ObjectPoolState state() {
@@ -150,76 +148,10 @@ class ObjectPool(T) {
                 warning(msg);
             }
             promise.failed(new Exception(msg));
-            // safeInsertWaiter(promise);
         }  
 
         handleWaiters();
         return promise;
-
-        // if(_waiters.empty()) {
-        //     // version (HUNT_POOL_DEBUG_MORE) 
-        //     tracef("Borrowing for promise [%s]", promise.id());
-
-        //     T r = null;
-            
-        //     try {
-        //         r = doBorrow();
-        //     } catch(Exception ex) {
-        //         warning(ex.msg);
-        //         version(HUNT_DEBUG) warning(ex);
-        //         promise.failed(ex);
-        //     }
-
-        //     if(r is null) {
-        //         // version(HUNT_POOL_DEBUG_MORE) 
-        //         {
-        //             warningf("Pool: %s, new waiter with %s...%d", _poolOptions.name, promise.id(), getNumWaiters());
-        //         }
-        //         safeInsertWaiter(promise);
-        //     } else {
-
-        //         // TODO: Tasks pending completion -@zhangxueping at 2021-10-10T16:05:16+08:00
-        //         // Idle > 0
-        //         bool isSucceeded = false;
-        //         try {
-        //             isSucceeded = promise.succeeded(r);
-        //         } catch(Throwable ex) {
-        //             warning(ex);
-        //         }
-
-        //         if(isSucceeded) {
-        //             version(HUNT_POOL_DEBUG) {
-        //                 tracef("Borrowed a result for promise %s with %s", promise.id(), (cast(Object)r).toString());
-        //             }
-        //         } else {
-        //             warningf("Failed to set the result for promise %s with %s", promise.id(), (cast(Object)r).toString());
-        //             doReturning(r);
-        //         }
-        //     }
-        // } else {
-        //     size_t waitNumber = getNumWaiters();
-        //     version(HUNT_POOL_DEBUG) {
-        //         warningf("Pool: %s, new waiter with [%s], current waitNumber: %d", _poolOptions.name, promise.id(), waitNumber);
-        //     }
-
-        //     if(_poolOptions.maxWaitQueueSize == -1 || waitNumber < _poolOptions.maxWaitQueueSize) {
-        //         safeInsertWaiter(promise);
-        //     } else {
-        //         string msg = format("Reach to the max WaitNumber (%d), the current: %d", 
-        //             _poolOptions.maxWaitQueueSize, waitNumber);
-
-        //         version(HUNT_DEBUG) {
-        //             warning(msg);
-        //         }
-        //         promise.failed(new Exception(msg));
-                
-        //         // safeInsertWaiter(promise);
-        //     }
-
-        //     handleWaiters();
-        // }
-
-
     }
 
     private void safeInsertWaiter(FuturePromise!T promise) {
@@ -452,17 +384,6 @@ class ObjectPool(T) {
             warningf("Failed to query the waiters. The state is %s.", _state);
             return;
         }
-
-        // bool handingStatus = cas(&_isWaitersHandling, false, true);
-        // if(!handingStatus) {
-        //     version(HUNT_POOL_DEBUG) warningf("Pool: %s is busy with Waiters Handling.", 
-        //         _poolOptions.name);
-        //     return;
-        // }
-
-        // scope(exit) {
-        //     // _isWaitersHandling = false;
-        // }
 
         while(true) {
             
