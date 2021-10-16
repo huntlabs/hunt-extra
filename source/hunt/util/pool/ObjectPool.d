@@ -238,7 +238,7 @@ class ObjectPool(T) {
                 PooledObject!(T) obj = new PooledObject!(T)();
                 _pooledObjects[index] = obj;
                 pooledObj = obj;
-                isUnlocked = true;
+                // isUnlocked = true;
                 _borrowLocker.unlock();
 
                 version(HUNT_POOL_DEBUG_MORE) {
@@ -254,8 +254,8 @@ class ObjectPool(T) {
                     
                     obj.bind(underlyingObj);
                     r = pooledObj.allocate();
-                    isUnlocked = true;
-                    _borrowLocker.unlock();
+                    // isUnlocked = true;
+                    // _borrowLocker.unlock();
                 } catch(Throwable t) {
                     warning(t.msg);
                     version(HUNT_DEBUG) warning(t);
@@ -273,8 +273,8 @@ class ObjectPool(T) {
                 bool isValid = _factory.isValid(underlyingObj);
                 if(isValid) {
                     r = pooledObj.allocate();
-                    isUnlocked = true;
-                    _borrowLocker.unlock();
+                    // isUnlocked = true;
+                    // _borrowLocker.unlock();
                     break;
                 } else {
                     pooledObj.invalidate();
@@ -290,8 +290,8 @@ class ObjectPool(T) {
                         _poolOptions.name, pooledObj.id, index);
                 }
                 _pooledObjects[index] = null;
-                isUnlocked = true;
-                _borrowLocker.unlock();
+                // isUnlocked = true;
+                // _borrowLocker.unlock();
                 _factory.destroyObject(underlyingObj);
                 break;
             }
@@ -370,6 +370,7 @@ class ObjectPool(T) {
         version(HUNT_DEBUG) {
             info(toString());
         }
+        info(toString());
         return result;
     }
 
