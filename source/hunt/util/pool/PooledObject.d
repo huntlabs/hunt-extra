@@ -42,10 +42,10 @@ class PooledObject(T) {
         _id = atomicOp!("+=")(_counter, 1);
     }
 
-    package void bind(T obj) {
-        _obj = obj;
-        _state = PooledObjectState.IDLE;
-    }
+    // package void bind(T obj) {
+    //     _obj = obj;
+    //     _state = PooledObjectState.IDLE;
+    // }
 
     size_t id() {
         return _id;
@@ -108,6 +108,28 @@ class PooledObject(T) {
         
         return false;        
     }
+
+
+    /**
+     * Allocates the object.
+     *
+     * @return {@code true} if the original state was {@link PooledObjectState#IDLE IDLE}
+     */
+    bool allocate(T obj) {
+        // version(HUNT_POOL_DEBUG) tracef(toString());
+
+        if(cas(&_state, PooledObjectState.UNUSABLE, PooledObjectState.ALLOCATED)) {
+            _obj = obj;
+            _lastBorrowTime = Clock.currTime;
+            _lastUseTime = _lastBorrowTime;
+            atomicOp!("+=")(_borrowedCount, 1);
+            return true;
+        } else {
+            version(HUNT_DEBUG) warningf("allocate collision: %s", toString());
+        }
+        
+        return false;        
+    }    
 
     /**
      * Sets the state to {@link PooledObjectState#INVALID INVALID}

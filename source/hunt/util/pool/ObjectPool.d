@@ -238,7 +238,7 @@ class ObjectPool(T) {
                 PooledObject!(T) obj = new PooledObject!(T)();
                 _pooledObjects[index] = obj;
                 pooledObj = obj;
-                // isUnlocked = true;
+                isUnlocked = true;
                 _borrowLocker.unlock();
 
                 version(HUNT_POOL_DEBUG_MORE) {
@@ -249,11 +249,11 @@ class ObjectPool(T) {
                     underlyingObj = _factory.makeObject();
 
                     // tracef("Pool: %s, binded slot[%d] locking...", _poolOptions.name, index);
-                    _borrowLocker.lock();
+                    // _borrowLocker.lock();
                     // tracef("Pool: %s, binded slot[%d] locked... underlyingObj is null: %s", _poolOptions.name, index, underlyingObj is null);
                     
-                    obj.bind(underlyingObj);
-                    r = pooledObj.allocate();
+                    // obj.bind(underlyingObj);
+                    r = pooledObj.allocate(underlyingObj);
                     // isUnlocked = true;
                     // _borrowLocker.unlock();
                 } catch(Throwable t) {
@@ -370,7 +370,7 @@ class ObjectPool(T) {
         version(HUNT_DEBUG) {
             info(toString());
         }
-        info(toString());
+        // info(toString());
         return result;
     }
 
@@ -487,6 +487,10 @@ class ObjectPool(T) {
      *         for an object from the pool
      */
     size_t getNumWaiters() {
+        _waitersLocker.lock();
+        scope(exit) {
+            _waitersLocker.unlock();
+        } 
         return walkLength(_waiters[]);
     }
 
