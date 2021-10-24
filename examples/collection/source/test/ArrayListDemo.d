@@ -1,4 +1,4 @@
-module ArrayListDemo;
+module test.ArrayListDemo;
 
 import common;
 
@@ -43,7 +43,7 @@ class ArrayListDemo
         al.add(2, "PLAY");
 
         assert(al.size() == 5);
-        assert(al[2] == "PLAY");
+        assert(al[2] == "PLAY", al[2]);
 
         writeln(al);
         writeln("Is arraylist empty? " ~ al.isEmpty().to!string());
@@ -60,6 +60,7 @@ class ArrayListDemo
         al.clear();
         writeln("After clear ArrayList:" ~ al.toString());
         assert(al.size() == 0);
+        assert(al.toArray() == []);
 
     }
 
