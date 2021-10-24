@@ -50,15 +50,16 @@ interface Promise(T) {
 class DefaultPromise(T) : Promise!T {
 
     static if (is(T == void)) {
-        void succeeded() {
-
+        bool succeeded() {
+            return true;
         }
     } else {
-        void succeeded(T result) {
-
+        bool succeeded(T result) {
+            return true;
         }
     }
 
-    void failed(Throwable x) {
+    bool failed(Throwable x) {
+        return true;
     }
 }
