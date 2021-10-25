@@ -67,8 +67,7 @@ class ArrayList(E) : AbstractList!E {
      * Constructs an empty list with an initial capacity of ten.
      */
     this() {
-        // this._array = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
-        _array.reserve(16);
+        _array = new E[DEFAULT_CAPACITY];
         super();
     }
 
@@ -85,11 +84,13 @@ class ArrayList(E) : AbstractList!E {
     // }
 
     this(E[] arr) {
+        _array = new E[arr.length];
         _array[0..arr.length] = arr[0..$];
         _size = cast(int)arr.length;
     }
 
     this(Collection!E c) {
+        _array = new E[c.size()];
         size_t index = 0;
         foreach(E e; c) {
             // _array.insertBack(e);
