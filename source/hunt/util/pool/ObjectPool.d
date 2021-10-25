@@ -33,6 +33,7 @@ class PoolOptions {
     size_t size = 5;
     int maxWaitQueueSize = -1;
     string name;
+    Duration waitTimeout = 15.seconds;
     CreationMode creationMode = CreationMode.Lazy;
 }
 
@@ -95,7 +96,11 @@ class ObjectPool(T) {
      *
      * @return an instance from this pool.
      */
-    T borrow(Duration timeout = 10.seconds, bool isQuiet = true) {
+    T borrow() {
+       return borrow(_poolOptions.waitTimeout, true);
+    }
+
+    T borrow(Duration timeout, bool isQuiet = true) {
         T r;
         if(timeout == Duration.zero) {
             r = doBorrow();
@@ -373,8 +378,6 @@ class ObjectPool(T) {
         // info(toString());
         return result;
     }
-
-    // private shared bool _isWaitersHandling = false;
 
     private void handleWaiters() {
         if(_state == ObjectPoolState.Closing || _state == ObjectPoolState.Closed) {
