@@ -362,7 +362,7 @@ class ArrayList(E) : AbstractList!E {
         E oldValue = _array[index];
         
         int s = size;
-        for(int i = index; i<s; i++) {
+        for(int i = index; i<s-1; i++) {
             _array[i] = _array[i+1];
         }
 

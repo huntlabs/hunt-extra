@@ -195,4 +195,26 @@ class ArrayListDemo
         }
     }
 
+    void testRemove() {
+        ArrayList!(string) arrl = new ArrayList!(string)();
+        //adding elements to the end
+        arrl.add("First");
+        arrl.add("Second");
+        arrl.add("Third");
+
+        tracef("size: %d", arrl.size());
+
+        List!(string) tokens = new ArrayList!(string)(arrl);
+        assert(tokens.size() == 3);
+
+        string token;
+        while(tokens.size() > 0) {
+            token = tokens.removeAt(0);
+            // tracef("%s removed", token);
+        }
+        assert(tokens.size() == 0);
+
+
+    }    
+
 }
