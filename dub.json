@@ -8,6 +8,6 @@
 		"resources"
 	],
     "dependencies": {
-        "hunt": "~>1.7.5"
+        "hunt": "~>1.7.12"
     }
 }
