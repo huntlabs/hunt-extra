@@ -1116,6 +1116,10 @@ abstract class AbstractMapEntry(K, V) : MapEntry!(K,V) {
 
 
     override size_t toHash() @trusted nothrow {
-        return hashOf(key) ^ hashOf(value);
+        static if(is(V == interface)) {
+            return hashOf(key) ^ hashOf(cast(Object)value);
+        } else {
+            return hashOf(key) ^ hashOf(value);
+        }
     }
 }
