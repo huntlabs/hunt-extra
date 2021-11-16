@@ -256,9 +256,10 @@ abstract class AbstractList(E) : AbstractCollection!E, List!E {
     override size_t toHash() @trusted nothrow {
         size_t hashCode = 1;
         try {
-            static if (is(E == class)) {
-                foreach (E e; this)
+            static if (is(E == class) || is(E == interface)) {
+                foreach (E e; this) {
                     hashCode = 31 * hashCode + (e is null ? 0 : (cast(Object) e).toHash());
+                }
             } else {
                 foreach (E e; this)
                     hashCode = 31 * hashCode + hashOf(e);
