@@ -226,7 +226,7 @@ class ArrayList(E) : AbstractList!E {
      * @return <tt>true</tt> if this list contains no elements
      */
     override bool isEmpty() {
-        return _array.length == 0;
+        return _size == 0;
     }
 
     /**
