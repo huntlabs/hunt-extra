@@ -194,9 +194,13 @@ class GreetingSettings : GreetingSettingsBase {
 
 }
 
+/** 
+ * 
+ */
 class GreetingBase {
     int id;
     private string content;
+
 
     this() {
 

@@ -2,10 +2,10 @@ module test.DeductionTest;
 
 import common;
 import hunt.logging.ConsoleLogger;
-
-import std.traits;
 import hunt.util.Traits;
 
+import std.conv;
+import std.traits;
 
 class DeductionTest {
 
@@ -23,10 +23,15 @@ class DeductionTest {
         //     deduce(greetings);
         // }
 
+        // {
+        //     GreetingBase[string][] greetings;
+        //     deduce(greetings);
+        // }
+
         {
-            GreetingBase[string][] greetings;
+            GreetingBase[2] greetings;
             deduce(greetings);
-        }
+        }        
     }
 
     // void testConstructor() {
@@ -55,6 +60,8 @@ alias CaseSensitive = Flag!"caseSensitive";
 
 void deduce(T, CaseSensitive sensitive = CaseSensitive.yes)(T v) { // if(!is(T == class)) 
     trace(sensitive);
+
+
     static if(is(T : U[], U)) {
         tracef("T[], T: %s, U: %s", T.stringof, U.stringof);
 
@@ -66,6 +73,10 @@ void deduce(T, CaseSensitive sensitive = CaseSensitive.yes)(T v) { // if(!is(T =
 
         static if(is(U : S[K], S, K)) {
             infof("T[][], T: %s, U: %s, S: %s, K: %s", T.stringof, U.stringof, S.stringof, K.stringof);
+        }
+
+        static if(isStaticArray!(T)) {
+            infof("T[]: %s[%d]", U.stringof, T.length);
         }
     }
 
@@ -102,9 +113,9 @@ void deduce(T, CaseSensitive sensitive = CaseSensitive.yes)(T v) { // if(!is(T =
 //     }
 // }
 
-void deduce(T : U[], U)(T v) if(is(U == class)) {
-    infof("Array, T: %s, U: %s", T.stringof, U.stringof);
-}
+// void deduce(T : U[], U)(T v) if(is(U == class)) {
+//     infof("Array, T: %s, U: %s", T.stringof, U.stringof);
+// }
 
 // void deduce(T)(T v) if(is(T : U[], U) && is(U == interface)) {
 //     static if(is(T : U[], U)) {

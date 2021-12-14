@@ -657,6 +657,28 @@ class JsonSerializerTest1 {
             }
         }
     }
+
+    void testStaticArray01() {
+
+        StaticArrayTester b = new StaticArrayTester();
+
+        SimpleCode tempCode = new SimpleCode();
+        tempCode.number = 12;
+        b.codes[1] = tempCode;
+
+        b.strings[1] = "test";
+
+        JSONValue js = toJson(b);
+
+        string str = js.toPrettyString();
+
+        trace(str);
+
+        StaticArrayTester b2 = toObject!(StaticArrayTester)(str);
+        assert(b2.codes[1].number == b.codes[1].number);
+
+        trace(b.strings[1]);
+    }    
 }
 
 
@@ -719,4 +741,22 @@ class GroupSkuModelMessage
     @JsonProperty("used_num")
     int usedNum;
 
+}
+
+
+class SimpleCode {
+    int number;
+}
+
+
+class StaticArrayTester {
+    SimpleCode[4] codes;
+    string[4] strings;
+
+    this() {
+        SimpleCode code = new SimpleCode();
+        code.number = 10;
+
+        codes[0] = code;
+    }
 }
