@@ -36,7 +36,7 @@ import core.thread;
 import std.algorithm;
 import std.conv;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 // import hunt.collection.ArrayList;
 // import java.util.ConcurrentModificationException;

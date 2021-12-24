@@ -15,7 +15,7 @@ import hunt.concurrency.thread.LockSupport;
 
 import hunt.Exceptions;
 import hunt.Functions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.system.Memory;
 import hunt.util.Common;
 import hunt.util.DateTime;

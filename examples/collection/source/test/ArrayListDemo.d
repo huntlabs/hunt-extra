@@ -7,7 +7,7 @@ import hunt.collection.ArrayList;
 import hunt.collection.Collections;
 import hunt.collection.List;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import std.stdio;
 import std.conv;

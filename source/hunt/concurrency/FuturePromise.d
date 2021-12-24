@@ -15,7 +15,7 @@ import hunt.concurrency.Future;
 import hunt.concurrency.Promise;
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import core.atomic;
 import core.thread;

@@ -13,7 +13,7 @@ module hunt.util.Common;
 public import hunt.util.Closeable;
 import hunt.util.Runnable;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 
 /**

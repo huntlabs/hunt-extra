@@ -9,7 +9,7 @@ import hunt.collection.SortedSet;
 import hunt.collection.TreeSet;
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.UnitTest;
 import hunt.util.Common;
 import hunt.Assert;

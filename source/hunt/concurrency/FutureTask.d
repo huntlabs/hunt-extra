@@ -30,7 +30,7 @@ static if(CompilerHelper.isGreaterThan(2093)) {
 import core.time;
 
 import hunt.concurrency.thread;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 
 /**

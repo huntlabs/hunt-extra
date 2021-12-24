@@ -3,7 +3,7 @@ module hunt.util.pool.ObjectPool;
 import hunt.concurrency.Future;
 import hunt.concurrency.Promise;
 import hunt.concurrency.FuturePromise;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import core.atomic;
 import core.sync.mutex;

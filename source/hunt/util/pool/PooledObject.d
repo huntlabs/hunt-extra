@@ -3,7 +3,7 @@ module hunt.util.pool.PooledObject;
 import core.atomic;
 import std.datetime;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import hunt.util.pool.PooledObjectState;
 

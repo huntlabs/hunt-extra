@@ -1,7 +1,7 @@
 module hunt.system.Environment;
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.system.Locale;
 import hunt.util.Configuration;
 

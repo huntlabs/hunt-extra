@@ -12,7 +12,7 @@
 module hunt.stream.FileOutputStream;
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.stream.Common;
 
 import std.array;

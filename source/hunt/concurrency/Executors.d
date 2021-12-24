@@ -26,7 +26,7 @@ import hunt.concurrency.ThreadPoolExecutor;
 
 import hunt.collection.List;
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.Common;
 import hunt.util.CompilerHelper;
 import hunt.util.DateTime;

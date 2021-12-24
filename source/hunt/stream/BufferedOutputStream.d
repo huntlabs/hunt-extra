@@ -13,7 +13,7 @@ module hunt.stream.BufferedOutputStream;
 
 import hunt.stream.Common;
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 /**
  * 

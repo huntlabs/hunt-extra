@@ -6,7 +6,7 @@ import HuntQueue = hunt.collection.Queue;
 import hunt.io.SimpleQueue;
 
 import hunt.util.DateTime;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import core.thread;
 import std.stdio;
 

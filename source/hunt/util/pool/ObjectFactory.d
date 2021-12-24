@@ -1,6 +1,6 @@
 module hunt.util.pool.ObjectFactory;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 abstract class ObjectFactory(T) {
 

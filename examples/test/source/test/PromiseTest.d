@@ -1,6 +1,6 @@
 module test.PromiseTest;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.UnitTest;
 
 import hunt.concurrency.FuturePromise;

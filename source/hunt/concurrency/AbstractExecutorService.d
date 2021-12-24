@@ -21,7 +21,7 @@ import hunt.collection.Iterator;
 import hunt.collection.List;
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.Common;
 import hunt.util.DateTime;
 import hunt.util.Runnable;

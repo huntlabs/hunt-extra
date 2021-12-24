@@ -7,7 +7,7 @@ import hunt.util.ByteOrder;
 
 import hunt.Byte;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.Assert;
 
 import std.conv;

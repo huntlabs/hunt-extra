@@ -1,7 +1,7 @@
 module test.LocaleTest;
 
 import hunt.util.Locale;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 class LocaleTest {
 

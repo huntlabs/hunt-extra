@@ -12,7 +12,7 @@
 module hunt.util.ObjectUtils;
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.Common;
 import hunt.util.CompilerHelper;
 
@@ -256,7 +256,7 @@ static if (CompilerHelper.isGreaterThan(2086)) {
 */
 mixin template CloneMemberTemplate(T, TopLevel topLevel = TopLevel.no, alias onCloned = null) 	{
 	import std.traits;
-	version(HUNT_DEBUG) import hunt.logging.ConsoleLogger;
+	version(HUNT_DEBUG) import hunt.logging;
 	alias baseClasses = BaseClassesTuple!T;
 
 	static if(baseClasses.length == 1 && is(baseClasses[0] == Object) 
@@ -284,7 +284,7 @@ mixin template CloneMemberTemplate(T, TopLevel topLevel = TopLevel.no, alias onC
 		static foreach (string fieldName; FieldNameTuple!T) {
 			debug(HUNT_DEBUG_MORE) {
 				// pragma(msg, "clone field=" ~ fieldName);
-				import hunt.logging.ConsoleLogger;
+				import hunt.logging;
 				tracef("cloning: name=%s, value=%s", fieldName, __traits(getMember, this, fieldName));
 			}
 			__traits(getMember, copy, fieldName) = __traits(getMember, this, fieldName);

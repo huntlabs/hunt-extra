@@ -20,7 +20,7 @@ import std.array;
 import std.conv;
 import std.range;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 /**
  * This class provides a skeletal implementation of the {@code Collection}

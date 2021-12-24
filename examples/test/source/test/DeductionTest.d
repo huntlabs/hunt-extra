@@ -1,7 +1,7 @@
 module test.DeductionTest;
 
 import common;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.Traits;
 
 import std.conv;
@@ -28,10 +28,10 @@ class DeductionTest {
         //     deduce(greetings);
         // }
 
-        {
-            GreetingBase[2] greetings;
-            deduce(greetings);
-        }        
+        // {
+        //     GreetingBase[2] greetings;
+        //     deduce(greetings);
+        // }        
     }
 
     // void testConstructor() {
@@ -42,6 +42,10 @@ class DeductionTest {
     //     deduce(ex);
     // }
 
+    void testNullable() {
+        Nullable!int a;
+        deduce(a);
+    }
  
 
     // void test2() {
@@ -51,12 +55,29 @@ class DeductionTest {
 }
 
 import std.typecons;
+import std.variant;
 
 /**
    Flag indicating whether a search is case-sensitive.
 */
 alias CaseSensitive = Flag!"caseSensitive";
 
+// void deduce(T : Nullable!U, U)(T a) {
+//     tracef("T:%s, U: %s", T.stringof, U.stringof);
+// }
+
+void deduce(T)(T a) {
+    static if(is(T : Nullable!U, U)) {
+        tracef("T:%s, U: %s", T.stringof, U.stringof);
+    } else {
+        error("bad");
+    }
+
+    Variant currentColumnValue = 2;
+
+    T v = currentColumnValue.coerce!T();
+
+}
 
 void deduce(T, CaseSensitive sensitive = CaseSensitive.yes)(T v) { // if(!is(T == class)) 
     trace(sensitive);

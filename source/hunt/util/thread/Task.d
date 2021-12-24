@@ -1,6 +1,6 @@
 module hunt.util.thread.Task;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import core.atomic;
 import core.time;

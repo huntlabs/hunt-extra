@@ -28,7 +28,7 @@ import core.sync.mutex;
 import core.sync.condition;
 import core.time;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 /**
  * An optionally-bounded {@linkplain BlockingQueue blocking queue} based on

@@ -14,7 +14,7 @@ import hunt.util.DateTime;
 import hunt.Exceptions;
 import hunt.util.Common;
 import hunt.util.Runnable;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import hunt.util.CompilerHelper;
 static if(CompilerHelper.isGreaterThan(2093)) {

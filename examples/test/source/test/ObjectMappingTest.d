@@ -7,7 +7,7 @@ import hunt.util.CompilerHelper;
 static if(CompilerHelper.isGreaterThan (2086)) {
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.ObjectUtils;
 import hunt.util.UnitTest;
 

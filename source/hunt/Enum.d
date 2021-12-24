@@ -196,7 +196,7 @@ T valueOf(T)(string name, T defaultValue = T.init) if(is(T : Enum!(T))) {
             if(t.name() == %2$s) return t;
         }
         
-        import hunt.logging.ConsoleLogger;
+        import hunt.logging;
         warning("Can't locate the member: " ~ %2$s ~ " in " ~ typeid(T).name ~ ".%1$s");
         return %3$s;`, memberName, paramName, defaultValue);
 

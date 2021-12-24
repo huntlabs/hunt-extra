@@ -38,7 +38,7 @@ import std.range;
 import std.traits;
 
 
-version (HUNT_DEBUG) import hunt.logging.ConsoleLogger;
+version (HUNT_DEBUG) import hunt.logging;
 
 // Red-black mechanics
 

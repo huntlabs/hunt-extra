@@ -14,7 +14,7 @@ module hunt.util.Locale;
 import hunt.Exceptions;
 import hunt.Functions;
 import hunt.stream.Common;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.collection;
 import hunt.system.Environment;
 import hunt.util.StringBuilder;

@@ -6,7 +6,7 @@ import std.stdio;
 import hunt.util.pool;
 import hunt.util.thread;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import core.thread;
 

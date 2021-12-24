@@ -1,6 +1,6 @@
 module test.SerializationTest;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.serialization.BinarySerialization;
 import hunt.util.Common;
 import hunt.util.ObjectUtils;

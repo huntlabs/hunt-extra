@@ -17,7 +17,7 @@ import core.time;
 
 import hunt.concurrency.thread.ThreadEx;
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.DateTime;
 
 

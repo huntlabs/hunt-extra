@@ -1,7 +1,7 @@
 module hunt.system.Locale;
 
 import hunt.Functions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import core.stdc.locale;
 import std.format;

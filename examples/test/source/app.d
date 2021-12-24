@@ -1,5 +1,5 @@
 import hunt.concurrency.thread;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.system.Locale;
 import hunt.system.Memory;
 import hunt.system.TimeZone;
@@ -71,7 +71,7 @@ void main()
     // // 
     // // testUnits!(PathMatcherTest); 
     // testUnits!(StringTokenizerTest);
-    testUnits!(ThreadTest);
+    // testUnits!(ThreadTest);
 
     // // These tests belown will block the test procession.
 
@@ -83,7 +83,7 @@ void main()
     // testUnits!(ScheduledThreadPoolTest);
     // testUnits!(ThreadPoolExecutorTest);
     // testUnits!(ConverterUtilsTest);
-    // testUnits!(DeductionTest);
+    testUnits!(DeductionTest);
 
     // testUnits!(JsonSerializerTest);
     // testUnits!(SerializationTest);

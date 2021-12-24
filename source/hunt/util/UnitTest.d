@@ -33,7 +33,7 @@ string generateUnitTests(T)() {
 	string[] methodsAfter;
 
 	string str;
-	str ~= `import std.stdio; import hunt.logging.ConsoleLogger;
+	str ~= `import std.stdio; import hunt.logging;
 writeln("=================================");
 writeln("Module: ` ~ fullTypeName ~ `     ");
 writeln("=================================");

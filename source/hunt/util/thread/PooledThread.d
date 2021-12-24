@@ -1,7 +1,7 @@
 module hunt.util.thread.PooledThread;
 
 import hunt.Functions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.thread.Task;
 
 import core.atomic;

@@ -3,7 +3,7 @@ module hunt.stream.TcpInputStream;
 import hunt.stream.Common;
 import hunt.io.TcpStream;
 import hunt.io.channel.Common;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import core.time;
 import std.algorithm;

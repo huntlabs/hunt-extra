@@ -4,7 +4,7 @@ import common;
 import hunt.util.Common;
 
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.UnitTest;
 import hunt.serialization.Common;
 import hunt.serialization.JsonSerializer;

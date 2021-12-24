@@ -12,7 +12,7 @@
 module hunt.util.Comparator;
 
 import std.traits;
-debug import hunt.logging.ConsoleLogger;
+debug import hunt.logging;
 
 /**
  * A comparison function, which imposes a <i>total ordering</i> on some

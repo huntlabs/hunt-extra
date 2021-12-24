@@ -2,7 +2,7 @@ module test.AtomicTest;
 
 import common;
 import hunt.concurrency.atomic;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import core.atomic;
 

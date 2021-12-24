@@ -2,7 +2,7 @@ module hunt.util.thread.ThreadObjectFactory;
 
 import hunt.util.pool.ObjectFactory;
 
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 import hunt.util.thread.PooledThread;
 
 import core.atomic;

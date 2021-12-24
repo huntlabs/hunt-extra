@@ -27,7 +27,7 @@ import hunt.util.Common;
 import hunt.util.DateTime;
 import hunt.util.Runnable;
 import hunt.Object;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 // import core.time;
 
 import core.atomic;

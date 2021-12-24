@@ -4,7 +4,7 @@ import hunt.util.ConverterUtils;
 
 import hunt.Assert;
 import hunt.Exceptions;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 import std.format;
 

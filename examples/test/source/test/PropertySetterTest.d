@@ -2,7 +2,7 @@ module test.PropertySetterTest;
 
 import hunt.util.ObjectUtils;
 import hunt.util.ObjectUtils;
-import hunt.logging.ConsoleLogger;
+import hunt.logging;
 
 struct Foo {
 	string name = "dog";
