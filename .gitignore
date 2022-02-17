@@ -33,6 +33,8 @@ examples/*/log.txt
 examples/collecton/container-demo
 examples/collection/container-demo
 examples/test/unittest
+examples/mime/mime-demo
+
 
 # meson build directories
 build

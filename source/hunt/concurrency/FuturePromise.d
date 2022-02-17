@@ -231,7 +231,7 @@ static if(is(T == void)) {
 				version (HUNT_DEBUG) info("Waiting for promise [%s]...", id());
 				_waiterCondition.wait();
 			} else {
-				version (HUNT_DEBUG) {
+				version (HUNT_DEBUG_MORE) {
 					tracef("Waiting for promise [%s] in %s...", id(), timeout);
 				}
 				bool r = _waiterCondition.wait(timeout);
@@ -255,7 +255,7 @@ static if(is(T == void)) {
 			}
 			
 			if(_cause is null) {
-				version (HUNT_DEBUG) tracef("Got a succeeded promise [%s].", id());
+				version (HUNT_DEBUG_MORE) tracef("Got a succeeded promise [%s].", id());
 			} else {
 				version (HUNT_DEBUG) warningf("Got a failed promise [%s]: %s", id(), _cause.msg);
 			}
