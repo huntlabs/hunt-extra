@@ -50,7 +50,7 @@ class ByteArrayPipedStream : PipedStream {
     }
 
     ByteArrayInputStream getInputStream() {
-        return new ByteArrayInputStream(outStream.toByteArray());
+        return new ByteArrayInputStream(getOutputStream().toByteArray());
         // if (inStream is null) {
         //     inStream = new ByteArrayInputStream(outStream.toByteArray());
         //     // outStream = null;
