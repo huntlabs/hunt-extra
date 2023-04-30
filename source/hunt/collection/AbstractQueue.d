@@ -175,6 +175,11 @@ abstract class AbstractQueue(E) : AbstractCollection!(E), Queue!(E) {
         return modified;
     }
 
+    override int opApply(scope int delegate(ref E) dg) {
+        throw new NotImplementedException();
+        // return 0;
+    }
+
     override bool opEquals(IObject o) {
         return opEquals(cast(Object) o);
     }
