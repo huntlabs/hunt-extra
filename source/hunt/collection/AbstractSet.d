@@ -55,6 +55,12 @@ abstract class AbstractSet(E) : AbstractCollection!E, Set!E {
     protected this() {
     }
 
+
+    override int opApply(scope int delegate(ref E) dg) {
+        throw new NotImplementedException();
+        // return 0;
+    }
+
     // Comparison and hashing
 
     /**

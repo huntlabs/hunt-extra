@@ -277,6 +277,10 @@ abstract class AbstractDeque(E) : AbstractQueue!(E), Deque!(E) {
         throw new NotSupportedException();
     }
 
+    override int opApply(scope int delegate(ref E) dg) {
+        throw new NotImplementedException();
+    }    
+
     override bool opEquals(IObject o) {
         return opEquals(cast(Object) o);
     }
